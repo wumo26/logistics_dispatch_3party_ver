@@ -345,7 +345,8 @@
                 <header class="task-route-heading">
                   <div>
                     <p>路線 {{ route.routeId }}</p>
-                    <h2>{{ route.warehouse.name }}</h2>
+                    <h2>出發倉庫：{{ route.warehouse.name }}</h2>
+                    <small>{{ route.warehouse.address }}</small>
                   </div>
                   <span>{{ route.vehicle.plateNumber }}</span>
                 </header>

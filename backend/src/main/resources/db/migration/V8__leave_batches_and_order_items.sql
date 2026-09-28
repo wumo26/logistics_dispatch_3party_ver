@@ -1,10 +1,10 @@
 -- 多日預排／補請假與訂單逐項點交。
--- V6 已建立請假主檔；本 migration 只補新增欄位、enum 值與 order_items。
+-- V6 已建立請假主檔；V7 已用於路段里程，本 migration 只補新增欄位、enum 值與 order_items。
 
-DROP PROCEDURE IF EXISTS v7_add_column_if_missing;
+DROP PROCEDURE IF EXISTS v8_add_column_if_missing;
 
 DELIMITER //
-CREATE PROCEDURE v7_add_column_if_missing(IN p_table VARCHAR(64), IN p_column VARCHAR(64), IN p_definition VARCHAR(255))
+CREATE PROCEDURE v8_add_column_if_missing(IN p_table VARCHAR(64), IN p_column VARCHAR(64), IN p_definition VARCHAR(255))
 BEGIN
     IF NOT EXISTS (
         SELECT 1
@@ -13,19 +13,19 @@ BEGIN
           AND table_name = p_table
           AND column_name = p_column
     ) THEN
-        SET @v7_ddl = CONCAT('ALTER TABLE `', p_table, '` ADD COLUMN `', p_column, '` ', p_definition);
-        PREPARE v7_stmt FROM @v7_ddl;
-        EXECUTE v7_stmt;
-        DEALLOCATE PREPARE v7_stmt;
+        SET @v8_ddl = CONCAT('ALTER TABLE `', p_table, '` ADD COLUMN `', p_column, '` ', p_definition);
+        PREPARE v8_stmt FROM @v8_ddl;
+        EXECUTE v8_stmt;
+        DEALLOCATE PREPARE v8_stmt;
     END IF;
 END //
 DELIMITER ;
 
 -- 請假群組、申請來源模式與補請假佐證照片。
-CALL v7_add_column_if_missing('driver_leave_requests', 'batch_id', 'VARCHAR(36) NULL');
-CALL v7_add_column_if_missing('driver_leave_requests', 'request_mode',
+CALL v8_add_column_if_missing('driver_leave_requests', 'batch_id', 'VARCHAR(36) NULL');
+CALL v8_add_column_if_missing('driver_leave_requests', 'request_mode',
     'ENUM (''PREPLANNED'', ''TEMPORARY'', ''MAKEUP'', ''SYSTEM_NO_SHOW'', ''ADMIN_PLANNED_PARTIAL'') NOT NULL DEFAULT ''TEMPORARY''');
-CALL v7_add_column_if_missing('driver_leave_requests', 'evidence_photo_url', 'VARCHAR(500) NULL');
+CALL v8_add_column_if_missing('driver_leave_requests', 'evidence_photo_url', 'VARCHAR(500) NULL');
 
 -- 舊資料沒有模式欄位，依既有來源保留其原本的語意。
 UPDATE driver_leave_requests
@@ -46,21 +46,21 @@ ALTER TABLE driver_leave_request_events
     MODIFY COLUMN old_leave_type ENUM ('ABSENT', 'ANNUAL', 'BEREAVEMENT', 'MENSTRUAL', 'PERSONAL', 'SICK', 'SPECIAL') NULL,
     MODIFY COLUMN new_leave_type ENUM ('ABSENT', 'ANNUAL', 'BEREAVEMENT', 'MENSTRUAL', 'PERSONAL', 'SICK', 'SPECIAL') NULL;
 
-SET @v7_has_batch_index = (
+SET @v8_has_batch_index = (
     SELECT COUNT(*)
     FROM information_schema.statistics
     WHERE table_schema = DATABASE()
       AND table_name = 'driver_leave_requests'
       AND index_name = 'idx_driver_leave_batch'
 );
-SET @v7_batch_index_ddl = IF(
-    @v7_has_batch_index = 0,
+SET @v8_batch_index_ddl = IF(
+    @v8_has_batch_index = 0,
     'ALTER TABLE driver_leave_requests ADD KEY idx_driver_leave_batch (batch_id, work_date)',
     'DO 0'
 );
-PREPARE v7_batch_index_stmt FROM @v7_batch_index_ddl;
-EXECUTE v7_batch_index_stmt;
-DEALLOCATE PREPARE v7_batch_index_stmt;
+PREPARE v8_batch_index_stmt FROM @v8_batch_index_ddl;
+EXECUTE v8_batch_index_stmt;
+DEALLOCATE PREPARE v8_batch_index_stmt;
 
 -- 每張訂單可有多筆實際商品；點交資料寫回同一筆明細。
 CREATE TABLE IF NOT EXISTS order_items (
@@ -80,4 +80,4 @@ CREATE TABLE IF NOT EXISTS order_items (
     KEY idx_order_items_order_sequence (order_id, sequence)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
-DROP PROCEDURE v7_add_column_if_missing;
+DROP PROCEDURE v8_add_column_if_missing;

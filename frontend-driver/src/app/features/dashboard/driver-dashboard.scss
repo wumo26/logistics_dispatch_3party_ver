@@ -627,6 +627,13 @@ h2 {
   padding: 0 16px 13px;
 }
 
+.task-route-heading small {
+  display: block;
+  margin-top: 4px;
+  color: #8ea69e;
+  font-size: 12px;
+}
+
 .task-stop-list {
   display: grid;
   margin: 0;
