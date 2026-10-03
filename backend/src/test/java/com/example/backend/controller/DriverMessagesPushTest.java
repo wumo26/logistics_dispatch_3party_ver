@@ -42,10 +42,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>前提同 DriverMessagesApiTest：drivers 有 id 1、2，admin_users 有 id 1。
  * 發出的訊息都帶 MARKER，測完刪掉。</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "app.crypto.password=test-only-password-test-only-password",
-        "app.crypto.salt=0123456789abcdef"
-})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class DriverMessagesPushTest {
 
     private static final String MARKER = "[DriverMessagesPushTest]";

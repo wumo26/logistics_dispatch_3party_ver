@@ -1,6 +1,7 @@
 package com.example.backend.controller;
 
 import com.example.backend.service.AuthService;
+import com.example.backend.service.PreTripInspectionService;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.servlet.Filter;
 import org.junit.jupiter.api.AfterEach;
@@ -17,6 +18,7 @@ import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -49,10 +51,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>前提：本機 DB 已套用 V5，至少有一個倉庫與一間門市。</p>
  */
-@SpringBootTest(properties = {
-        "app.crypto.password=test-only-password-test-only-password",
-        "app.crypto.salt=0123456789abcdef"
-})
+@SpringBootTest
 class DriverLoadingApiTest {
 
     private static final String MARKER = "LOADTEST";
@@ -70,6 +69,10 @@ class DriverLoadingApiTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @MockitoBean
+    // 此測試聚焦點交／訂單狀態；出車前檢查在 PreTripInspectionApiTest 單獨驗證。
+    private PreTripInspectionService preTripInspectionService;
 
     private MockMvc mockMvc;
     private long driverId;

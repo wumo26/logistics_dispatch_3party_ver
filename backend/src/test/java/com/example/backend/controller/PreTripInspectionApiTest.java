@@ -24,8 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.junit.jupiter.api.Assertions.*;
 
 /** 真實驗證權限、multipart、持久化與點交防護；資料交易 rollback，照片也隨 rollback 清理。 */
-@SpringBootTest(properties={"app.crypto.password=test-only-password-test-only-password", "app.crypto.salt=0123456789abcdef",
-        "app.storage.pre-trip-dir=build/test-pre-trip-photos"})
+@SpringBootTest(properties = "app.storage.pre-trip-dir=build/test-pre-trip-photos")
 @Transactional
 class PreTripInspectionApiTest {
     @Autowired WebApplicationContext context;

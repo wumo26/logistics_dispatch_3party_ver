@@ -64,21 +64,11 @@ management.endpoints.web.exposure.include=health
 資料庫設定僅從環境變數或未納入版控的 `backend/.env` 讀取；正式機必須設定實際值。
 `show-sql=true` 上線會把 log 灌爆。
 
-## 0-3 移除 crypto 預設值
-
-AI Key 加密設定僅從環境變數或未納入版控的 `backend/.env` 讀取。
-正式環境必須提供 `APP_CRYPTO_PASSWORD` 與 `APP_CRYPTO_SALT`，不能使用開發預設值。
-
-## 0-4 準備三組 secret
+## 0-3 準備 JWT secret
 
 ```bash
 openssl rand -base64 48   # APP_JWT_SECRET
-openssl rand -base64 36   # APP_CRYPTO_PASSWORD
-openssl rand -hex 8       # APP_CRYPTO_SALT（16 位 hex）
 ```
-
-> `APP_CRYPTO_PASSWORD` / `APP_CRYPTO_SALT` **一旦上線就不能再換**，
-> 換了資料庫裡存的 AI API key 全部解不開。第一次就要定好並備份。
 
 ---
 
@@ -216,10 +206,7 @@ DB_URL=jdbc:mysql://localhost:3306/logistics?serverTimezone=Asia/Taipei&useSSL=f
 DB_USER=logistics
 DB_PASSWORD=<階段 2-3 設的密碼>
 OSRM_BASE_URL=http://localhost:5001
-APP_JWT_SECRET=<階段 0-4 產生的>
-APP_CRYPTO_PASSWORD=<階段 0-4 產生的，不可再更改>
-APP_CRYPTO_SALT=<階段 0-4 產生的，不可再更改>
-OPENAI_API_KEY=
+APP_JWT_SECRET=<階段 0-3 產生的>
 SHOW_SQL=false
 ```
 
@@ -518,8 +505,7 @@ MySQL 8.4 預設 `caching_sha2_password`，非加密連線下驅動要先索取�
 
 **已知障礙**：
 
-- `AiApiKeyApiTest` 是完整 `@SpringBootTest` 且注入 `JdbcTemplate`，會真的讀寫資料庫；
-  GitHub runner 沒有 MySQL 會直接失敗
+- 部分 `@SpringBootTest` 會真的讀寫資料庫，需使用獨立的測試資料庫
 - `backend/src/test/resources/` 是空的，測試會吃到 `application.properties` 的 `localhost:3306`
 - `OsrmClientTest` 需確認是否真的打 `localhost:5001`
 

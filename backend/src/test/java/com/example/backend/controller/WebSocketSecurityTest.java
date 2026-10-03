@@ -36,10 +36,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * 用真的 WebSocket 客戶端連上測試用後端，驗證攔截器的三道檢查。
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "app.crypto.password=test-only-password-test-only-password",
-        "app.crypto.salt=0123456789abcdef"
-})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class WebSocketSecurityTest {
 
     @LocalServerPort

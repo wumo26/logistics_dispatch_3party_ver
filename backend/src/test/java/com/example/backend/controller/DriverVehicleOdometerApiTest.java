@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /** 驗證司機實際儀表數 → DB → 資源里程／保養計算；測試結束 rollback，不改使用者車輛。 */
-@SpringBootTest(properties = {"app.crypto.password=test-only-password-test-only-password", "app.crypto.salt=0123456789abcdef"})
+@SpringBootTest
 @Transactional
 class DriverVehicleOdometerApiTest {
     @Autowired WebApplicationContext context;
@@ -40,6 +40,7 @@ class DriverVehicleOdometerApiTest {
     @MockitoBean RoutePlanMetricsService metrics;
     @MockitoBean EmergencyLeaveService emergency;
     @MockitoBean PreTripInspectionService preTrip;
+    @MockitoBean DispatchVehicleMaintenanceGuard maintenanceGuard;
     MockMvc mvc;
     long vehicleId, driverId, routeId, warehouseId;
     String adminToken, driverToken;
@@ -68,6 +69,8 @@ class DriverVehicleOdometerApiTest {
     private void drive(int start, int end) throws Exception {
         mvc.perform(post("/api/driver/mileage/start").header("Authorization", driverToken).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"odometer\":" + start + "}")).andExpect(status().isOk());
+        // 測試共用一筆交易；真實 HTTP 請求則各有自己的 persistence context。
+        em.flush(); em.clear();
         mvc.perform(post("/api/driver/mileage/end").header("Authorization", driverToken).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"odometer\":" + end + "}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.actualDistance").value(end - start))

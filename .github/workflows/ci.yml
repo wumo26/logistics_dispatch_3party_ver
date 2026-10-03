@@ -35,7 +35,7 @@ jobs:
           --health-retries=20
 
     env:
-      DB_URL: jdbc:mysql://127.0.0.1:3306/logistics?serverTimezone=Asia/Taipei&rewriteBatchedStatements=true
+      DB_URL: jdbc:mysql://127.0.0.1:3306/logistics?serverTimezone=Asia/Taipei&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&useSSL=false
       DB_USER: root
       DB_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
 

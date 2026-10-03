@@ -48,10 +48,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * <p>不留下任何資料：改訂單的測試都在 rollback 的交易裡做，flush 只是讓 Hibernate 觸發監聽器。
  * commit 後推出去的那一段由 DispatchBoardPushServiceTest 測。</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "app.crypto.password=test-only-password-test-only-password",
-        "app.crypto.salt=0123456789abcdef"
-})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class DispatchBoardPushTest {
 
     @LocalServerPort

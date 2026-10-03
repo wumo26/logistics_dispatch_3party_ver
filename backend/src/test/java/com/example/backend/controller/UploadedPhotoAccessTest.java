@@ -27,10 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>照片目錄指到暫存資料夾，不會碰到專案底下的 uploads/。</p>
  */
-@SpringBootTest(properties = {
-        "app.crypto.password=test-only-password-test-only-password",
-        "app.crypto.salt=0123456789abcdef"
-})
+@SpringBootTest
 class UploadedPhotoAccessTest {
 
     // 1x1 透明 PNG

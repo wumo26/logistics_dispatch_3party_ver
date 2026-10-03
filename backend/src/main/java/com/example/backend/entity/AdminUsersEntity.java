@@ -2,7 +2,6 @@ package com.example.backend.entity;
 
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
 
 @Table(name = "admin_users")
 @Entity
@@ -28,13 +27,6 @@ public class AdminUsersEntity {
      */
     @Column(length = 30)
     private String phone;
-    // ai key 欄位
-    @Column(name = "ai_api_key_encrypted", length = 512)
-    private String aiApiKeyEncrypted;
-    @Column(name = "ai_api_key_last4", length = 4)
-    private String aiApiKeyLast4;
-    @Column(name = "ai_api_key_updated_at")
-    private LocalDateTime aiApiKeyUpdatedAt;
 
     public Long getId() {
         return id;
@@ -76,27 +68,4 @@ public class AdminUsersEntity {
         this.phone = phone;
     }
 
-    public String getAiApiKeyEncrypted() {
-        return aiApiKeyEncrypted;
-    }
-
-    public void setAiApiKeyEncrypted(String aiApiKeyEncrypted) {
-        this.aiApiKeyEncrypted = aiApiKeyEncrypted;
-    }
-
-    public String getAiApiKeyLast4() {
-        return aiApiKeyLast4;
-    }
-
-    public void setAiApiKeyLast4(String aiApiKeyLast4) {
-        this.aiApiKeyLast4 = aiApiKeyLast4;
-    }
-
-    public LocalDateTime getAiApiKeyUpdatedAt() {
-        return aiApiKeyUpdatedAt;
-    }
-
-    public void setAiApiKeyUpdatedAt(LocalDateTime aiApiKeyUpdatedAt) {
-        this.aiApiKeyUpdatedAt = aiApiKeyUpdatedAt;
-    }
 }

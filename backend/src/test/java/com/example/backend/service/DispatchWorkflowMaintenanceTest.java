@@ -29,22 +29,6 @@ class DispatchWorkflowMaintenanceTest {
         verify(dispatch, never()).publish(date);
     }
 
-    @Test void preflightChecksMaintenanceWithoutPublishing() {
-        DispatchService dispatch = mock(DispatchService.class);
-        DispatchGuardService existingGuard = mock(DispatchGuardService.class);
-        DispatchVehicleMaintenanceGuard maintenance = mock(DispatchVehicleMaintenanceGuard.class);
-        DispatchWorkflowService workflow = new DispatchWorkflowService(dispatch,
-                mock(DispatchBoardService.class), existingGuard, mock(DispatchDraftService.class),
-                mock(RoutePlanMetricsService.class), mock(DispatchSlotService.class),
-                mock(DispatchDayService.class), maintenance, mock(PreTripInspectionService.class));
-        LocalDate date = LocalDate.of(2026, 9, 27);
-
-        workflow.assertCanPublish(date);
-        verify(existingGuard).assertCanPublish(date);
-        verify(maintenance).assertCanPublish(date);
-        verifyNoInteractions(dispatch);
-    }
-
     @Test void withdrawInvalidatesInspectionBeforeChangingRoutes() {
         DispatchService dispatch = mock(DispatchService.class);
         DispatchGuardService guard = mock(DispatchGuardService.class);

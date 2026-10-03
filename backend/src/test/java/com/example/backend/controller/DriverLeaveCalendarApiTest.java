@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /** 本機整合測試：示範司機／班次／申請均於每個測試後 rollback，不留下營運資料。 */
-@SpringBootTest(properties = {"app.crypto.password=test-only-password-test-only-password", "app.crypto.salt=0123456789abcdef"})
+@SpringBootTest
 @Transactional
 class DriverLeaveCalendarApiTest {
     @Autowired WebApplicationContext context;

@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /** 真 API 回應與保養公式；OSRM 固定測試值，所有資料 rollback，不改使用者路線。 */
-@SpringBootTest(properties = {"app.crypto.password=test-only-password-test-only-password", "app.crypto.salt=0123456789abcdef"})
+@SpringBootTest
 @Transactional
 class DispatchMaintenanceMetricsApiTest {
     @Autowired WebApplicationContext context;

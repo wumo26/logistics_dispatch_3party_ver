@@ -102,18 +102,6 @@ export interface AdminUserDto {
   phone: string;
 }
 
-/** 後端只回傳遮罩後的 API Key，完整內容不會再次傳回前端。 */
-export interface AiApiKeyStatusDto {
-  configured: boolean;
-  maskedKey: string | null;
-  updatedAt: string | null;
-}
-
-/** 只在儲存時送出，不寫入瀏覽器儲存空間。 */
-export interface AiApiKeyRequest {
-  apiKey: string;
-}
-
 /** 司機登入前提交的帳號申請。nationalId 只會被後端當成初始密碼雜湊。 */
 export interface DriverAccountApplicationRequest {
   account: string;
@@ -793,51 +781,6 @@ export interface OptimizeSlotsRequest {
    * orderIds 是格子裡已經有的訂單，自動排車時固定在這格的車上，只有待排單的訂單交給 OR-Tools 分配
    */
   slots: {driverId: number | null; vehicleId: number | null; orderIds: number[]}[];
-}
-
-/* ── AI 調度助理 ───────────────────────────────────────────────
- * 對話只會把動作加入待執行清單，調度員按確認才真正寫入。
- * 對話與清單都以登入者 JWT 區分，後端存在記憶體，重啟即消失。
- */
-
-/** 對應後端 AiActionType */
-export type AiActionType = 'ASSIGN_DRIVER' | 'MOVE_ORDER' | 'PUBLISH_DAY' | 'UNASSIGN_DRIVER';
-
-/** POST /api/ai/chat 的請求本體 */
-export interface AiChatRequest {
-  message: string;
-}
-
-/** POST /api/ai/chat 的回應：助理回覆外加最新的待執行清單 */
-export interface AiChatReply {
-  /** 模型產生的文字，可能含 Markdown */
-  reply: string;
-  /** 整份清單而非本次新增的部分，前端直接整包取代 */
-  pendingActions: AiPendingActionDto[];
-}
-
-/** 待執行清單中的一項動作。對應後端 PendingActionResponse。 */
-export interface AiPendingActionDto {
-  /**
-   * 清單項目編號（UUID），加入清單時由後端產生，用於刪除單一項目與 @for 的 track。
-   * 跟下面的業務 id 無關，畫面上不顯示。
-   */
-  id: string;
-  type: AiActionType;
-  /** 給人看的說明，姓名、車牌取自資料庫，確認視窗直接顯示這段 */
-  summary: string;
-  /** 配送日期，yyyy-MM-dd */
-  date: string;
-  /** PUBLISH_DAY 為 null：發布範圍是當天全部倉庫 */
-  warehouseId: number | null;
-  /** 只給分組標題顯示用；PUBLISH_DAY 為 null，畫面顯示「全部倉庫」 */
-  warehouseName: string | null;
-  /** ASSIGN_DRIVER、UNASSIGN_DRIVER 為該路線的車；MOVE_ORDER 為目標車；PUBLISH_DAY 為 null */
-  vehicleId: number | null;
-  /** ASSIGN_DRIVER 為被指派的司機；UNASSIGN_DRIVER 為要被取消的司機；其他為 null */
-  driverId: number | null;
-  /** 只有 MOVE_ORDER 有值 */
-  orderId: number | null;
 }
 
 // ── 司機聊天室 ─────────────────────────────────────────

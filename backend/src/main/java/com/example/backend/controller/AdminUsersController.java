@@ -2,16 +2,12 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.request.AdminPasswordChangeDTO;
 import com.example.backend.dto.request.AdminUsersDTO;
-import com.example.backend.dto.request.AiApiKeyDTO;
-import com.example.backend.dto.respones.AiApiKeyStatusResponse;
 import com.example.backend.service.AdminUsersService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,27 +36,6 @@ public class AdminUsersController {
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody AdminPasswordChangeDTO dto) {
         adminUsersService.changePassword(adminId(jwt), dto);
-        return ResponseEntity.noContent().build();
-    }
-
-    /** 查詢自己的 AI API Key 設定狀態。 */
-    @GetMapping("/me/ai-api-key")
-    public AiApiKeyStatusResponse getAiApiKeyStatus(@AuthenticationPrincipal Jwt jwt) {
-        return adminUsersService.getAiApiKeyStatus(adminId(jwt));
-    }
-
-    /** 新增或更新自己的 AI API Key。 */
-    @PutMapping("/me/ai-api-key")
-    public AiApiKeyStatusResponse saveAiApiKey(
-            @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody AiApiKeyDTO dto) {
-        return adminUsersService.saveAiApiKey(adminId(jwt), dto.getApiKey());
-    }
-
-    /** 移除自己的 AI API Key。 */
-    @DeleteMapping("/me/ai-api-key")
-    public ResponseEntity<Void> deleteAiApiKey(@AuthenticationPrincipal Jwt jwt) {
-        adminUsersService.deleteAiApiKey(adminId(jwt));
         return ResponseEntity.noContent().build();
     }
 

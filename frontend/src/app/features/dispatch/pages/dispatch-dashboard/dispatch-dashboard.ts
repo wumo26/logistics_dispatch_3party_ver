@@ -18,7 +18,6 @@ import {LiveFleetMap, MapPoint, RouteLine} from '../../components/live-fleet-map
 import {VehicleMaintenancePanel} from '../../components/vehicle-maintenance-panel/vehicle-maintenance-panel';
 import {VehicleMaintenanceNotice} from '../../components/vehicle-maintenance-notice/vehicle-maintenance-notice';
 import {DispatchApiService} from '../../../../core/services/dispatch-api.service';
-import {DispatchBoardEventsService} from '../../../../core/services/dispatch-board-events.service';
 import {DispatchHeaderService} from '../../../../core/services/dispatch-header.service';
 import {DriverChatSocketService} from '../../../../core/services/driver-chat-socket.service';
 import {
@@ -227,7 +226,6 @@ export class DispatchDashboard implements OnInit {
   readonly warehouseId = signal(0);
   readonly optimizing = signal(false);
   private readonly api = inject(DispatchApiService);
-  private readonly boardEvents = inject(DispatchBoardEventsService);
   private readonly socket = inject(DriverChatSocketService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
@@ -587,10 +585,6 @@ export class DispatchDashboard implements OnInit {
     this.loadDashboard();
     // 跟總覽分開打：編組載不到不該讓整個看板空白
     this.loadTemplates();
-    // AI 清單在聊天面板確認後，資料庫已經換了，重讀一次才不會用舊畫面蓋回去
-    this.boardEvents.boardChanged$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.onBoardPush(this.dispatchDate()));
     // 後端在訂單或路線 commit 後推「哪一天變了」。同一波操作可能連續推好幾則，等 0.5 秒沒有新的再重查一次
     this.socket.boardPushes$
       .pipe(debounceTime(500), takeUntilDestroyed(this.destroyRef))

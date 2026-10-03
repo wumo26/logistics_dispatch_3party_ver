@@ -46,14 +46,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>測試前直接用 SQL 塞三則訊息給司機 1；發訊息測試送出的內容也帶 MARKER，
  * 測完在 @AfterEach 一起刪掉，不留痕跡。
  * 標已讀會改到整串對話，所以司機 1 原本就未讀的訊息也會先記下 id，測完還原成未讀。
- * token 用專案的 JwtEncoder 簽，不需要帳號密碼（做法同 AiApiKeyApiTest）。</p>
+ * token 用專案的 JwtEncoder 簽，不需要帳號密碼。</p>
  *
  * <p>前提：本機 DB 已有 driver_messages 表，drivers 表有 id 1、2 兩位司機，admin_users 有 id 1。</p>
  */
-@SpringBootTest(properties = {
-        "app.crypto.password=test-only-password-test-only-password",
-        "app.crypto.salt=0123456789abcdef"
-})
+@SpringBootTest
 class DriverMessagesApiTest {
 
     private static final String MARKER = "[DriverMessagesApiTest]";

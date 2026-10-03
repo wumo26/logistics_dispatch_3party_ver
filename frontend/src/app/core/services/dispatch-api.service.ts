@@ -6,11 +6,6 @@ import {
   AdminStickyNoteRequestDto,
   AdminUserCreateRequest,
   AdminUserDto,
-  AiApiKeyRequest,
-  AiApiKeyStatusDto,
-  AiChatReply,
-  AiChatRequest,
-  AiPendingActionDto,
   DispatchDayDto,
   DispatchResultDto,
   DriverAccountApplicationDto,
@@ -282,18 +277,6 @@ export class DispatchApiService {
 
   createAdminUser(request: AdminUserCreateRequest): Observable<AdminUserDto> {
     return this.http.post<AdminUserDto>(`${API_ROOT}/admin-users`, request);
-  }
-
-  getAiApiKeyStatus(): Observable<AiApiKeyStatusDto> {
-    return this.http.get<AiApiKeyStatusDto>(`${API_ROOT}/admin-users/me/ai-api-key`);
-  }
-
-  saveAiApiKey(request: AiApiKeyRequest): Observable<AiApiKeyStatusDto> {
-    return this.http.put<AiApiKeyStatusDto>(`${API_ROOT}/admin-users/me/ai-api-key`, request);
-  }
-
-  removeAiApiKey(): Observable<void> {
-    return this.http.delete<void>(`${API_ROOT}/admin-users/me/ai-api-key`);
   }
 
   getPendingDriverAccountApplicationCount(): Observable<{ count: number }> {
@@ -606,42 +589,6 @@ export class DispatchApiService {
     return this.http.get<GpsPingDto[]>(`${API_ROOT}/fleet/drivers/${driverId}/gps/history`, {
       params,
     });
-  }
-
-  /**
-   * 送一句話給 AI 助理。後端同步等模型跑完所有工具才回應，十幾秒是常態，
-   * 等待期間畫面要鎖住輸入，兩句同時送會打亂同一段對話記憶的順序。
-   */
-  chatWithAi(message: string): Observable<AiChatReply> {
-    const request: AiChatRequest = {message};
-    return this.http.post<AiChatReply>(`${API_ROOT}/ai/chat`, request);
-  }
-
-  /** 讀取待執行清單；開啟聊天室或重新整理後用來還原清單 */
-  getAiPlan(): Observable<AiPendingActionDto[]> {
-    return this.http.get<AiPendingActionDto[]>(`${API_ROOT}/ai/plan`);
-  }
-
-  /**
-   * 整批執行待執行清單。後端按日期與倉庫分組各呼叫一次 reassign，全有或全無；
-   * 回傳每組各一包看板。失敗回 400，清單保留在後端，可以修正後再按一次。
-   */
-  confirmAiPlan(): Observable<DispatchResultDto[]> {
-    return this.http.post<DispatchResultDto[]>(`${API_ROOT}/ai/plan/confirm`, null);
-  }
-
-  /** 整批放棄待執行清單，不執行任何動作 */
-  clearAiPlan(): Observable<void> {
-    return this.http.delete<void>(`${API_ROOT}/ai/plan`);
-  }
-
-  /**
-   * 刪除待執行清單中的單一項目，回傳刪除後的整份清單，前端直接整包取代。
-   * id 是清單項目的 UUID（AiPendingActionDto.id），不是訂單或車輛的 id；
-   * 找不到時後端不報錯，照樣回傳最新清單。跟 clearAiPlan 分開寫，漏傳 id 才不會變成整份清掉。
-   */
-  removeAiPlanAction(id: string): Observable<AiPendingActionDto[]> {
-    return this.http.delete<AiPendingActionDto[]>(`${API_ROOT}/ai/plan/${id}`);
   }
 
   // ── 司機聊天室 ─────────────────────────────────────────

@@ -18,7 +18,6 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatButtonModule} from '@angular/material/button';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {TextFieldModule} from '@angular/cdk/text-field';
-import {MatExpansionModule} from '@angular/material/expansion';
 import {MatDialog, MatDialogModule} from '@angular/material/dialog';
 import {MatIconModule} from '@angular/material/icon';
 import {MatBadgeModule} from '@angular/material/badge';
@@ -27,22 +26,18 @@ import {AuthService} from '../../../../core/auth/auth.service';
 import {
   AdminStickyNoteDto,
   AdminStickyNoteRequestDto,
-  AiPendingActionDto,
   DriverLeaveRequestDto,
   DriverAccountApplicationDto, DriverDto, DriverMessageDto, DriverMessagePushDto,
   EmergencyLeaveDto,
   EmergencyLeaveReplacementCandidateDto,
 } from '../../../../core/services/dispatch-api.models';
 import {DispatchApiService} from '../../../../core/services/dispatch-api.service';
-import {DispatchBoardEventsService} from '../../../../core/services/dispatch-board-events.service';
 import {DispatchHeaderService} from '../../../../core/services/dispatch-header.service';
 import {DriverChatSocketService} from '../../../../core/services/driver-chat-socket.service';
 import {AdminThemeService} from '../../../../core/theme/admin-theme.service';
 import {FormsModule} from '@angular/forms';
 
-type ChatContact =
-  | { kind: 'ai' }
-  | { kind: 'driver'; driverId: number; name: string };
+type ChatContact = { kind: 'driver'; driverId: number; name: string };
 
 type RejectionTarget =
   | { kind: 'application'; id: number; name: string }
@@ -50,13 +45,7 @@ type RejectionTarget =
 
 // 聊天室狀態
 type ChatView = 'closed' | 'narrow' | 'wide';
-type ChatMessageRole = 'user' | 'assistant';
 type StickyNoteDockSide = 'left' | 'right';
-
-interface ChatMessage {
-  role: ChatMessageRole;
-  text: string;
-}
 
 @Component({
   selector: 'app-dispatch-shell',
@@ -74,7 +63,6 @@ interface ChatMessage {
     MatSelectModule,
     TextFieldModule,
     FormsModule,
-    MatExpansionModule,
     MatDialogModule,
     MatBadgeModule,
   ],
@@ -106,21 +94,13 @@ export class DispatchShell implements OnInit {
   protected readonly chatDrivers = signal<DriverDto[]>([]);
   //司機名單載入失敗的訊息，空字串代表沒有錯誤
   protected readonly chatDriversError = signal('');
-  //聊天室人員選取 預設ai
-  protected readonly selectedChatContact = signal<ChatContact>({kind: 'ai'});
+  // 沒有選中司機時先顯示提示，載入名單後選第一位可聯絡的司機。
+  protected readonly selectedChatContact = signal<ChatContact | null>(null);
   // 用一個狀態而非 isOpen + isNarrow 兩個布林，才不會出現「沒打開卻是窄版」的組合
   protected readonly chatView = signal<ChatView>('closed');
-  //聊天室輸出內容
-  protected readonly chatOutput = signal<ChatMessage[]>([]);
-  //聊天室輸入內容
-  protected readonly chatInput = signal("");
-  //等待回復開關
-  protected readonly chatWaiting = false;
-  // 任務開關
-  readonly panelOpenState = signal(false);
   //司機訊息
   readonly driverMessages = signal<DriverMessageDto[]>([]);
-  // 司機對話的輸入框；跟 AI 的 chatInput 分開，換對象時打到一半的字才不會被送給別人
+  // 換對象時清空未送出的內容，避免傳給錯誤的司機。
   protected readonly driverChatInput = signal('');
   // 送出中：鎖住送出鈕，避免連按送出兩則一樣的訊息
   protected readonly isSendingDriverMessage = signal(false);
@@ -164,7 +144,7 @@ export class DispatchShell implements OnInit {
   private readonly markViewingDriverRead = effect(() => {
     const contact = this.selectedChatContact();
     // 窄版只剩聯絡人清單、看不到對話內容，不能算讀過
-    if (this.chatView() !== 'wide' || contact.kind !== 'driver') {
+    if (this.chatView() !== 'wide' || !contact) {
       return;
     }
     const driverId = contact.driverId;
@@ -191,17 +171,12 @@ export class DispatchShell implements OnInit {
       + this.pendingTemporaryLeaveRequests().length,
   );
 
-  protected readonly aiPendingAction = signal<AiPendingActionDto[]>([]);
-
   private readonly authService = inject(AuthService);
   private readonly api = inject(DispatchApiService);
-  private readonly boardEvents = inject(DispatchBoardEventsService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly chatSocket = inject(DriverChatSocketService);
   private readonly destroyRef = inject(DestroyRef);
-  // 確認執行視窗的內容，寫在 dispatch-shell.html 最下面的 <ng-template #confirmPlanDialog>
-  private readonly confirmPlanDialog = viewChild.required<TemplateRef<unknown>>('confirmPlanDialog');
   private readonly stickyNotesDialogTemplate = viewChild.required<TemplateRef<unknown>>('stickyNotesDialog');
 
   /**
@@ -495,7 +470,6 @@ export class DispatchShell implements OnInit {
   protected openChat(): void {
     this.chatView.set('wide');
     this.loadChatDrivers();
-    this.loadPlan();
   }
 
   protected closeChat(): void {
@@ -714,6 +688,10 @@ export class DispatchShell implements OnInit {
         // 後端 findAll 會連停用司機一起回傳，停用帳號登入不了司機端，放進清單也聯絡不到
         const activeDrivers = drivers.filter((driver) => driver.isActive);
         this.chatDrivers.set(activeDrivers);
+        if (!this.selectedChatContact() && activeDrivers.length > 0) {
+          const first = activeDrivers[0];
+          this.selectChatContact({kind: 'driver', driverId: first.id!, name: first.name});
+        }
       },
       error: () => {
         this.chatDriversError.set('無法取得司機名單，請稍後再試。');
@@ -724,83 +702,14 @@ export class DispatchShell implements OnInit {
   // 只負責換選中的人；窄版展開改由 expandChatIfNarrow 處理，因為點已選中的人不會進到這裡
   protected selectChatContact(contact: ChatContact): void {
     this.selectedChatContact.set(contact);
-    if (contact.kind === 'driver') {
-      this.loadDriverConversation(contact.driverId);
-    }
+    this.loadDriverConversation(contact.driverId);
   }
 
   protected isSelectedChatContact(contact: ChatContact): boolean {
     const selected = this.selectedChatContact();
 
-    if (contact.kind === 'ai') {
-      return selected.kind === 'ai';
-    }
     // 模板每次重畫都會建立新物件，=== 比的是不是同一個物件，所以要比內容
-    return selected.kind === 'driver' && selected.driverId === contact.driverId;
-  }
-
-  protected chatSend(): void {
-    const message = this.chatInput();
-
-    this.chatOutput.update((messages) => [...messages, {role: 'user', text: message}]);
-    this.chatInput.set('');
-
-    this.api.chatWithAi(message).subscribe({
-      next: (chat) => {
-        this.chatOutput.update((messages) => [...messages, {role: 'assistant', text: chat.reply}]);
-        // 回應帶的是整份清單（不是只有這次新增的），直接整包換掉；AI 回覆的文字不能當清單內容
-        this.applyPlan(chat.pendingActions);
-      }
-    });
-  }
-
-
-  private loadPlan(): void {
-    this.api.getAiPlan().subscribe({
-      next: (actions) => {
-        this.applyPlan(actions);
-      }
-    })
-
-  }
-
-  private applyPlan(actions: AiPendingActionDto[]): void {
-    this.aiPendingAction.set(actions);
-  }
-
-  // 刪除
-  protected delAllPlan(): void {
-    this.api.clearAiPlan().subscribe({
-      next: () => {
-        this.loadPlan();
-      }
-    })
-  }
-
-  protected delPan(id: string): void {
-    this.api.removeAiPlanAction(id).subscribe({
-      next: (action) => {
-        this.loadPlan();
-      }
-    })
-
-  }
-
-  // 確認執行：先開視窗讓調度員看過清單，按「執行」才呼叫 API
-  protected openConfirmPlan(): void {
-    this.dialog.open(this.confirmPlanDialog()).afterClosed().subscribe((ok) => {
-      // 按取消是 false；點背景、按 Esc 是 undefined，只有按「執行」才是 true
-      if (!ok) {
-        return;
-      }
-      this.api.confirmAiPlan().subscribe({
-        next: () => {
-          this.applyPlan([]);
-          // 看板在另一個元件，資料庫已經被 AI 改過，要它重讀，不然舊畫面一拖曳就會蓋回去
-          this.boardEvents.notifyBoardChanged();
-        },
-      });
-    });
+    return selected?.driverId === contact.driverId;
   }
 
   //拿司機id訊息
@@ -834,7 +743,7 @@ export class DispatchShell implements OnInit {
     const contact = this.selectedChatContact();
     const content = this.driverChatInput().trim();
     // 送出中再按一次（Enter 連按、手滑雙擊）直接忽略，不然會送出兩則一樣的
-    if (contact.kind !== 'driver' || !content || this.isSendingDriverMessage()) {
+    if (!contact || !content || this.isSendingDriverMessage()) {
       return;
     }
 
@@ -882,7 +791,7 @@ export class DispatchShell implements OnInit {
 
   private isOpenDriver(driverId: number): boolean {
     const contact = this.selectedChatContact();
-    return contact.kind === 'driver' && contact.driverId === driverId;
+    return contact?.driverId === driverId;
 
   }
 
@@ -986,7 +895,7 @@ export class DispatchShell implements OnInit {
    */
   private catchUpOpenConversation(): void {
     const contact = this.selectedChatContact();
-    if (contact.kind !== 'driver') {
+    if (!contact) {
       return;
     }
 

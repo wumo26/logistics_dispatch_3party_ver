@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /** 真 API + MySQL；所有新增／修改在每個案例結束 rollback，不留下示範帳號。 */
-@SpringBootTest(properties = {"app.crypto.password=test-only-password-test-only-password", "app.crypto.salt=0123456789abcdef"})
+@SpringBootTest
 @Transactional
 class DriverWarehouseApiTest {
     @Autowired WebApplicationContext context;
