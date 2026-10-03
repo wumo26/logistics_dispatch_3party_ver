@@ -48,6 +48,21 @@ function messageOf(value: unknown) {
   return null;
 }
 
+const SECRET_LOG_FIELDS = new Set([
+  'password', 'currentpassword', 'newpassword', 'accesstoken',
+  'refreshtoken', 'authorization', 'apikey', 'secret',
+]);
+
+function safeLogValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(safeLogValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [
+      key, SECRET_LOG_FIELDS.has(key.toLowerCase()) ? '[REDACTED]' : safeLogValue(entry),
+    ]));
+  }
+  return value;
+}
+
 export default function Home() {
   const [apiBase, setApiBase] = useState(DEFAULT_API);
   const [connection, setConnection] = useState<'idle' | 'checking' | 'online' | 'offline'>('idle');
@@ -117,7 +132,7 @@ export default function Home() {
       const entry: Log = {
         id: ++logId.current, time: new Date(), method, path, status: response.status,
         ok: response.ok, duration: Math.round(performance.now() - started),
-        request: options.body, response: data,
+        request: safeLogValue(options.body), response: safeLogValue(data),
       };
       setLogs((items) => [entry, ...items].slice(0, 30));
       setSelectedLogId(entry.id);
@@ -126,7 +141,7 @@ export default function Home() {
       const detail = error instanceof Error ? error.message : '未知連線錯誤';
       const entry: Log = {
         id: ++logId.current, time: new Date(), method, path, status: null, ok: false,
-        duration: Math.round(performance.now() - started), request: options.body,
+        duration: Math.round(performance.now() - started), request: safeLogValue(options.body),
         error: `${detail}。請確認後端已啟動，並允許目前頁面的 CORS 來源。`,
       };
       setLogs((items) => [entry, ...items].slice(0, 30));

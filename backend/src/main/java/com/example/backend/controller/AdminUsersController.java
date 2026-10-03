@@ -1,7 +1,9 @@
 package com.example.backend.controller;
 
 import com.example.backend.dto.request.AdminPasswordChangeDTO;
+import com.example.backend.dto.request.AdminProfileUpdateDTO;
 import com.example.backend.dto.request.AdminUsersDTO;
+import com.example.backend.dto.respones.AdminProfileResponse;
 import com.example.backend.service.AdminUsersService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -9,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,6 +31,18 @@ public class AdminUsersController {
     public ResponseEntity<AdminUsersDTO> create(@Valid @RequestBody AdminUsersDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(adminUsersService.create(dto));
+    }
+
+    @GetMapping("/me")
+    public AdminProfileResponse getProfile(@AuthenticationPrincipal Jwt jwt) {
+        return adminUsersService.getProfile(adminId(jwt));
+    }
+
+    @PutMapping("/me")
+    public AdminProfileResponse updateProfile(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody AdminProfileUpdateDTO dto) {
+        return adminUsersService.updateProfile(adminId(jwt), dto);
     }
 
     /** 已登入主管輸入原密碼後，修改自己的登入密碼。 */

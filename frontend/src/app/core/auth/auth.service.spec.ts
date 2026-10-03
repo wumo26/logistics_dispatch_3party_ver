@@ -150,4 +150,24 @@ describe('AuthService', () => {
     expect(service.user()).toBeNull();
     expect(service.accessToken()).toBeNull();
   });
+
+  it('loads and updates the current administrator profile', () => {
+    service.login({account: 'manager', password: 'Manager123!'}).subscribe();
+    httpTesting.expectOne('/api/auth/admin/login').flush({
+      accessToken: 'admin-token', tokenType: 'Bearer', expiresAt: '2026-08-19T20:00:00Z',
+      role: 'ADMIN', userId: 1, account: 'manager', name: '物流主管',
+    });
+
+    service.loadProfile().subscribe((profile) => expect(profile.phone).toBe('0900000000'));
+    const load = httpTesting.expectOne('/api/admin-users/me');
+    expect(load.request.method).toBe('GET');
+    load.flush({account: 'manager', name: '物流主管', phone: '0900000000'});
+
+    service.updateProfile({name: '新主管', phone: null}).subscribe();
+    const update = httpTesting.expectOne('/api/admin-users/me');
+    expect(update.request.method).toBe('PUT');
+    expect(update.request.body).toEqual({name: '新主管', phone: null});
+    update.flush({account: 'manager', name: '新主管', phone: null});
+    expect(service.user()?.displayName).toBe('新主管');
+  });
 });

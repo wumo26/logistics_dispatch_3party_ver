@@ -59,11 +59,15 @@ public class AuthController {
     @GetMapping("/me")
     public CurrentUserResponse currentUser(@AuthenticationPrincipal Jwt jwt) {
         Number userId = jwt.getClaim("userId");
+        String role = jwt.getClaimAsString("role");
+        String name = AuthService.ROLE_ADMIN.equals(role)
+                ? adminUsersService.getProfile(userId.longValue()).name()
+                : jwt.getClaimAsString("name");
         return new CurrentUserResponse(
                 userId.longValue(),
                 jwt.getSubject(),
-                jwt.getClaimAsString("name"),
-                jwt.getClaimAsString("role")
+                name,
+                role
         );
     }
 }

@@ -28,6 +28,12 @@ interface CurrentUserResponse {
   role: 'ADMIN';
 }
 
+export interface AdminProfile {
+  account: string;
+  name: string;
+  phone: string | null;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -75,6 +81,19 @@ export class AuthService {
 
   dashboardPath(): string {
     return '/dispatch/dashboard';
+  }
+
+  loadProfile(): Observable<AdminProfile> {
+    return this.http.get<AdminProfile>('/api/admin-users/me');
+  }
+
+  updateProfile(request: Pick<AdminProfile, 'name' | 'phone'>): Observable<AdminProfile> {
+    return this.http.put<AdminProfile>('/api/admin-users/me', request).pipe(
+      map((profile) => {
+        this.user.update((current) => current ? {...current, displayName: profile.name} : current);
+        return profile;
+      }),
+    );
   }
 
   restoreSession(): Observable<AuthUser | null> {

@@ -2,9 +2,11 @@ package com.example.backend.service;
 
 import com.example.backend.dao.AdminUsersDAO;
 import com.example.backend.dto.request.AdminPasswordChangeDTO;
+import com.example.backend.dto.request.AdminProfileUpdateDTO;
 import com.example.backend.dto.request.AdminPasswordResetDTO;
 import com.example.backend.dto.request.AdminPasswordResetVerificationDTO;
 import com.example.backend.dto.request.AdminUsersDTO;
+import com.example.backend.dto.respones.AdminProfileResponse;
 import com.example.backend.entity.AdminUsersEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -44,6 +46,22 @@ public class AdminUsersService {
         entity.setName(dto.getName().trim());
         entity.setPhone(dto.getPhone().trim());
         return toDTO(adminUsersDAO.save(entity));
+    }
+
+    @Transactional(readOnly = true)
+    public AdminProfileResponse getProfile(Long userId) {
+        return toProfile(findAdmin(userId));
+    }
+
+    public AdminProfileResponse updateProfile(Long userId, AdminProfileUpdateDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("主管資料不可空白");
+        }
+        validateRequired(dto.name(), "主管姓名不可空白");
+        AdminUsersEntity entity = findAdmin(userId);
+        entity.setName(dto.name().trim());
+        entity.setPhone(dto.phone() == null || dto.phone().isBlank() ? null : dto.phone().trim());
+        return toProfile(adminUsersDAO.save(entity));
     }
 
     @Transactional(readOnly = true)
@@ -125,5 +143,9 @@ public class AdminUsersService {
         dto.setName(entity.getName());
         dto.setPhone(entity.getPhone());
         return dto;
+    }
+
+    private AdminProfileResponse toProfile(AdminUsersEntity entity) {
+        return new AdminProfileResponse(entity.getAccount(), entity.getName(), entity.getPhone());
     }
 }

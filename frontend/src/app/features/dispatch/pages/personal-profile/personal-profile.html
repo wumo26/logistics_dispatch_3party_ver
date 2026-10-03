@@ -36,19 +36,24 @@
         <input matInput formControlName="phone" autocomplete="tel" inputmode="tel" />
         @if (profileForm.controls.phone.touched && profileForm.controls.phone.hasError('pattern')) {
           <mat-error>請輸入有效的電話格式。</mat-error>
+        } @else if (profileForm.controls.phone.touched && profileForm.controls.phone.hasError('maxlength')) {
+          <mat-error>聯絡電話不可超過 20 個字元。</mat-error>
         }
       </mat-form-field>
 
       <div class="profile-form__actions">
-        <button type="submit" matButton="filled">
+        <button type="submit" matButton="filled" [disabled]="!hasLoadedProfile() || isSaving()">
           <mat-icon aria-hidden="true">save</mat-icon>
-          儲存個人資料
+          {{ isSaving() ? '儲存中...' : '儲存個人資料' }}
         </button>
       </div>
     </form>
 
     @if (profileFeedback()) {
       <p class="feedback is-info">{{ profileFeedback() }}</p>
+    }
+    @if (profileError()) {
+      <p class="feedback is-error" role="alert">{{ profileError() }}</p>
     }
   </section>
 

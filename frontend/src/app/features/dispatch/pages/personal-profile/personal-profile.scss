@@ -101,6 +101,12 @@
   background: rgb(99 209 198 / 8%);
 }
 
+.feedback.is-error {
+  border: 1px solid rgb(230 130 123 / 32%);
+  color: #f1bcb6;
+  background: rgb(126 47 44 / 22%);
+}
+
 @media (max-width: 640px) {
   .profile-card {
     padding: 16px;
@@ -120,4 +126,9 @@
 :host-context(.dispatch-layout.is-light-theme) .feedback.is-info {
   color: #45645a;
   background: #eef7f3;
+}
+
+:host-context(.dispatch-layout.is-light-theme) .feedback.is-error {
+  color: #8a4540;
+  background: #fff0ee;
 }
