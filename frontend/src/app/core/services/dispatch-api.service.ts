@@ -33,6 +33,7 @@ import {
   ReportQuery,
   ReportSummaryDto,
   ReportPerformanceDto,
+  ReportOutcomesDto,
   RouteMetricsDto,
   ScheduleMonthDto,
   StoreDto,
@@ -221,6 +222,10 @@ export class DispatchApiService {
 
   getReportPerformance(query: ReportQuery): Observable<ReportPerformanceDto> {
     return this.http.get<ReportPerformanceDto>(`${API_ROOT}/reports/performance`, {params: this.reportParams(query)});
+  }
+
+  getReportOutcomes(query: ReportQuery): Observable<ReportOutcomesDto> {
+    return this.http.get<ReportOutcomesDto>(`${API_ROOT}/reports/outcomes`, {params: this.reportParams(query)});
   }
 
   getReportRoutes(query: ReportQuery): Observable<ReportCollectionDto> {

@@ -2,48 +2,29 @@ import {Component, computed, inject, OnDestroy, OnInit, signal} from '@angular/c
 import {Router} from '@angular/router';
 import {catchError, forkJoin, of, Subscription} from 'rxjs';
 import {MatIconModule} from '@angular/material/icon';
+import {NgTemplateOutlet} from '@angular/common';
 import {DispatchApiService} from '../../../../core/services/dispatch-api.service';
-import {OrderDto, ReportCollectionDto, ReportPerformanceDto} from '../../../../core/services/dispatch-api.models';
+import {ReportCollectionDto, ReportPerformanceDto, ReportOutcomesDto} from '../../../../core/services/dispatch-api.models';
+import {CUMULATIVE_ISSUE_CATEGORIES, matchesReportCase} from '../../report-delivery-cases';
+import {isOverdueUnsettledOrder} from '../../report-overdue-orders';
 
-type ReportPeriod = 'year' | 'month' | 'week';
-
-interface ChartBucket {
-  label: string;
-  date: string;
-  completed: number;
-  total: number;
-  height: number;
-  from: string;
-  to: string;
-}
-
-interface StatusSummary {
-  label: string;
-  detail: string;
-  count: number;
-  percentage: number | null;
-  tone: string;
-  filter: string;
-}
+type ReportPeriod = 'year' | 'month' | 'week' | 'day';
 
 interface OperationalSources {
   performance: ReportPerformanceDto | null;
-  warehouses: ReportCollectionDto | null;
+  outcomes: ReportOutcomesDto | null;
   exceptions: ReportCollectionDto | null;
 }
 
-interface WarehouseReportRow {
-  warehouseId?: number | null;
-  warehouseName?: string;
-  orders?: number;
-  completedOrders?: number;
-  publishedRoutes?: number;
-  unassignedConfirmedOrders?: number;
-}
+interface ChartBucket {from: string; to: string; label: string; dateLabel: string; count: number; other: number;}
+interface StatusTile {label: string; value: number; metric: string; icon: string; tone?: 'warning' | 'muted';}
+interface RateDial {label: string; value: number | null; numerator: number; denominator: number; sheet: string; metric: string;}
+interface IssueTile {label: string; value: number | null; metric: string; icon: string; sheet: 'exceptions' | 'delivery-quality'; unit: '件';}
+
 
 @Component({
   selector: 'app-operation-report',
-  imports: [MatIconModule],
+  imports: [MatIconModule, NgTemplateOutlet],
   templateUrl: './operation-report.html',
   styleUrl: './operation-report.scss',
 })
@@ -52,135 +33,128 @@ export class OperationReport implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private supplementalRequest?: Subscription;
 
-  readonly activePeriod = signal<ReportPeriod>('week');
+  // 首次進入顯示本月累計；週別仍由使用者選擇，不將其他期間混入本週。
+  readonly activePeriod = signal<ReportPeriod>('month');
   readonly selectedYear = signal(new Date().getFullYear());
   readonly selectedMonth = signal(new Date().getMonth());
   readonly selectedWeek = signal(0);
-  readonly orders = signal<OrderDto[]>([]);
+  readonly selectedDay = signal(new Date().getDate());
   readonly loading = signal(true);
-  readonly errorMessage = signal('');
   readonly operationalData = signal<OperationalSources | null>(null);
   readonly operationalLoading = signal(false);
   readonly operationalError = signal('');
-  readonly warehouseError = signal('');
+  readonly outcomeError = signal('');
   readonly exceptionError = signal('');
 
   readonly periods: {id: ReportPeriod; label: string}[] = [
     {id: 'year', label: '年度'},
     {id: 'month', label: '月度'},
     {id: 'week', label: '週別'},
+    {id: 'day', label: '日別'},
   ];
-
-  // Current order state grouped by scheduled delivery date, not historical as-of data.
-  // Keep the denominator aligned with the report API; never call it OTIF or on-time delivery.
-  readonly report = computed(() => {
-    const orders = this.ordersInPeriod();
-    const today = this.todayTaipei();
-    const count = (statuses: OrderDto['status'][]) => orders.filter((order) => statuses.includes(order.status)).length;
-    const completed = count(['COMPLETED']);
-    const eligible = count(['CONFIRMED', 'LOADED', 'IN_DELIVERY', 'NO_SIGNATURE', 'FAILED', 'COMPLETED']);
-    return {
-      total: orders.length,
-      boxes: orders.reduce((sum, order) => sum + (order.boxCount || 0), 0),
-      completed,
-      eligible,
-      rate: eligible ? (completed / eligible) * 100 : null,
-      pendingApproval: count(['PENDING_CONFIRM']),
-      waitingDispatch: count(['CONFIRMED']),
-      waitingRate: eligible ? (count(['CONFIRMED']) / eligible) * 100 : null,
-      inProgress: count(['LOADED', 'IN_DELIVERY']),
-      noSignature: count(['NO_SIGNATURE']),
-      failed: count(['FAILED']),
-      exceptionRate: eligible ? (count(['FAILED', 'NO_SIGNATURE']) / eligible) * 100 : null,
-      cancelled: count(['CANCELLED']),
-      futureScheduled: orders.filter((order) => order.deliveryDate > today).length,
-      range: this.periodRangeLabel(),
-    };
-  });
-
-  readonly chartData = computed(() => this.buildChartData(this.ordersInPeriod()));
-  readonly chartMaximum = computed(() => Math.max(1, ...this.chartData().map((bucket) => bucket.completed)));
-  readonly statusBreakdown = computed<StatusSummary[]>(() => {
-    const orders = this.ordersInPeriod();
-    const groups: {statuses: OrderDto['status'][]; label: string; detail: string; tone: string; filter: string}[] = [
-      {statuses: ['COMPLETED'], label: '已完成', detail: '已完成配送', tone: 'complete', filter: 'COMPLETED'},
-      {statuses: ['LOADED', 'IN_DELIVERY'], label: '配送中', detail: '已點交或正在配送', tone: 'progress', filter: 'DELIVERY'},
-      {statuses: ['CONFIRMED'], label: '待排車', detail: '已審核，尚待調度', tone: 'pending', filter: 'CONFIRMED'},
-      {statuses: ['PENDING_CONFIRM'], label: '待審核', detail: '尚未確認配送需求', tone: 'pending', filter: 'PENDING_CONFIRM'},
-      {statuses: ['NO_SIGNATURE'], label: '無人簽收', detail: '需要後續處理', tone: 'warning', filter: 'NO_SIGNATURE'},
-      {statuses: ['FAILED'], label: '配送失敗', detail: '需要查明原因', tone: 'warning', filter: 'FAILED'},
-      {statuses: ['CANCELLED'], label: '已取消', detail: '不計入完成率', tone: 'neutral', filter: 'CANCELLED'},
-    ];
-    return groups.map((group) => {
-      const count = orders.filter((order) => group.statuses.includes(order.status)).length;
-      return {...group, count, percentage: this.rate(count, orders.length)};
-    });
-  });
-
-  readonly attentionOrders = computed(() => this.ordersInPeriod()
-    .filter((order) => order.status === 'FAILED' || order.status === 'NO_SIGNATURE' || order.status === 'CONFIRMED')
-    .sort((left, right) => left.deliveryDate.localeCompare(right.deliveryDate))
-    .slice(0, 6));
 
   readonly capacity = computed(() => {
     const data = this.operationalData();
     if (!data?.performance) return null;
     return {
       people: data.performance.workforce,
-      fleet: data.performance.fleet,
-      ...this.caseStats(),
     };
   });
+  readonly outcomes = computed(() => this.operationalData()?.outcomes ?? null);
+  readonly delivery = computed(() => this.outcomes()?.delivery ?? null);
+  readonly fleet = computed(() => this.operationalData()?.performance?.fleet ?? null);
+  readonly recovery = computed(() => this.outcomes()?.recovery ?? null);
+  readonly warehouseSummary = computed(() => this.outcomes()?.loading ?? null);
 
-  readonly caseStats = computed(() => {
-    const cases = this.operationalData()?.exceptions;
-    if (!cases) return null;
-    const recordedExceptions = this.collectionNumber(cases, 'recordedCases');
-    const closedExceptions = this.collectionNumber(cases, 'closedCases');
-    return {recordedExceptions, closedExceptions, openedExceptions: this.collectionNumber(cases, 'openCases'),
-      caseClosureRate: this.rate(closedExceptions, recordedExceptions)};
+  readonly exceptionCases = computed(() => {
+    const rows = this.operationalData()?.exceptions?.['cases'];
+    return Array.isArray(rows) ? rows : null;
   });
 
-  readonly warehouseRows = computed(() => {
-    const data = this.operationalData();
-    if (!data) return [];
-    const directory = this.collectionRows<WarehouseReportRow>(data.warehouses, 'warehouses');
-    const extra: WarehouseReportRow[] = (data.performance?.warehouses ?? []).filter(performance => !directory.some(row => row.warehouseId === performance.warehouseId))
-      .map(performance => ({warehouseId: performance.warehouseId, warehouseName: performance.warehouseName}));
-    return [...directory, ...extra]
-      .map((row) => {
-        const orders = this.ordersInPeriod().filter((order) => order.warehouseId === row.warehouseId);
-        const eligible = orders.filter((order) => ['CONFIRMED', 'LOADED', 'IN_DELIVERY', 'NO_SIGNATURE', 'FAILED', 'COMPLETED'].includes(order.status)).length;
-        const completed = orders.filter((order) => order.status === 'COMPLETED').length;
-        const performance = data.performance?.warehouses.find(performance => performance.warehouseId === row.warehouseId);
-        return {...row, orders: orders.length,
-          completedOrders: completed, eligibleOrders: eligible, completionRate: this.rate(completed, eligible),
-          people: performance?.workforce, fleet: performance?.fleet};
-      })
-      .sort((left, right) => (left.warehouseId ?? Number.MAX_SAFE_INTEGER) - (right.warehouseId ?? Number.MAX_SAFE_INTEGER));
+  readonly peopleDials = computed<RateDial[] | null>(() => {
+    const p = this.capacity()?.people;
+    return p ? [
+      {label: '打卡率', value: p.attendanceRate, numerator: p.attendedShifts, denominator: p.dueShifts, sheet: 'attendance', metric: 'clocked-in'},
+      {label: '準時上班率', value: p.onTimeRate, numerator: p.onTimeShifts, denominator: p.attendedShifts, sheet: 'attendance', metric: 'on-time'},
+      {label: '加班率', value: p.overtimeRate, numerator: p.overtimeShifts, denominator: p.finishedShifts, sheet: 'attendance', metric: 'overtime'},
+    ] : null;
+  });
+  readonly peopleTiles = computed<StatusTile[] | null>(() => {
+    const p = this.capacity()?.people;
+    return p ? [
+      {label: '遲到', value: p.lateShifts, metric: 'late', icon: 'schedule', tone: 'warning'},
+      {label: '缺上班卡', value: p.missingClockInShifts, metric: 'missing-clock-in', icon: 'event_busy', tone: 'warning'},
+    ] : null;
+  });
+  readonly issueTiles = computed<IssueTile[] | null>(() => {
+    const rows = this.exceptionCases();
+    const outcomes = this.outcomes();
+    if (!rows && !outcomes) return null;
+    return [...CUMULATIVE_ISSUE_CATEGORIES.map(item => ({
+      label: item.label, icon: item.icon, metric: item.id, sheet: 'exceptions', unit: '件',
+      value: rows ? rows.filter(row => matchesReportCase(row, item.id)).length : null,
+    } as IssueTile)), {label: '未結訂單異常', icon: 'pending_actions', metric: 'overdue-unsettled',
+      sheet: 'delivery-quality', unit: '件',
+      value: outcomes ? outcomes.orders.filter(isOverdueUnsettledOrder).length : null}];
+  });
+  readonly issueTotal = computed(() => {
+    const tiles = this.issueTiles();
+    return tiles?.length === 3 && tiles.every(tile => tile.value !== null)
+      ? tiles.reduce((sum, tile) => sum + tile.value!, 0) : null;
   });
 
-  readonly warehouseTotals = computed(() => {
-    if (!this.operationalData()) return null;
-    const rows = this.warehouseRows();
-    const eligible = rows.reduce((sum, row) => sum + row.eligibleOrders, 0);
-    const completed = rows.reduce((sum, row) => sum + row.completedOrders, 0);
-    return {eligible, completed, completionRate: this.rate(completed, eligible)};
+  readonly tripBuckets = computed<ChartBucket[] | null>(() => {
+    const p = this.operationalData()?.performance;
+    return p ? this.calendarBuckets().map(bucket => ({...bucket, other: 0,
+      count: p.trips.filter(trip => typeof trip['date'] === 'string' && trip['date'] >= bucket.from && trip['date'] <= bucket.to).length})) : null;
   });
+  readonly orderBuckets = computed<ChartBucket[] | null>(() => this.outcomes()
+    ? this.calendarBuckets().map(bucket => {
+      const rows = this.outcomes()!.daily.filter(day => day.date >= bucket.from && day.date <= bucket.to);
+      const count = rows.reduce((sum, day) => sum + day.fullOrders, 0);
+      return {...bucket, count, other: rows.reduce((sum, day) => sum + day.dueOrders, 0) - count};
+    }) : null);
+  readonly warehouseComparisons = computed(() => this.outcomes()?.warehouses ?? null);
+  readonly tripChartHasData = computed(() => this.tripBuckets()?.some(b => b.count > 0) ?? false);
+  readonly orderChartHasData = computed(() => this.orderBuckets()?.some(b => b.count + b.other > 0) ?? false);
+  readonly issueChartHasData = computed(() => this.issueTiles()?.some(tile => (tile.value ?? 0) > 0) ?? false);
+  readonly issueChartEmptyLabel = computed(() => {
+    if (!this.exceptionCases() || !this.outcomes()) return '部分異常資料未載入';
+    return '本期未登錄異常案件';
+  });
+
+  protected chartHeight(count: number, buckets: ChartBucket[]): number {
+    const max = Math.max(1, ...buckets.map(b => b.count + b.other));
+    return count / max * 100;
+  }
+  protected issueHeight(value: number | null): number {
+    return (value ?? 0) / Math.max(1, ...(this.issueTiles() ?? []).map(row => row.value ?? 0)) * 100;
+  }
+  protected openBucket(bucket: ChartBucket, sheet: string): void {
+    void this.router.navigate(['/dispatch/history'], {queryParams: {from: bucket.from, to: bucket.to, sheet}});
+  }
+  protected scopeLabel(): string {
+    return this.activePeriod() === 'year' ? '每月' : this.activePeriod() === 'month' ? '每週'
+      : this.activePeriod() === 'day' ? '當日' : '週一至週六';
+  }
+  private calendarBuckets(): Omit<ChartBucket, 'count' | 'other'>[] {
+    const {start} = this.periodDates();
+    const ranges = this.activePeriod() === 'year'
+      ? Array.from({length: 12}, (_, m) => ({start: new Date(this.selectedYear(), m, 1), end: new Date(this.selectedYear(), m + 1, 0), label: `${m + 1}月`, dateLabel: ''}))
+      : this.activePeriod() === 'month'
+        ? this.monthWeeks().map((week, i) => ({...week, label: `第${i + 1}週`, dateLabel: `${week.start.getDate()}–${week.end.getDate()}日`}))
+        : this.activePeriod() === 'day'
+          ? [{start, end: start, label: '當日', dateLabel: `${start.getMonth() + 1}/${start.getDate()}`}]
+        : Array.from({length: 6}, (_, d) => {
+          const day = new Date(start); day.setDate(day.getDate() + d);
+          return {start: day, end: day, label: `週${['一', '二', '三', '四', '五', '六'][d]}`, dateLabel: `${day.getMonth() + 1}/${day.getDate()}`};
+        });
+    return ranges.map(range => ({from: this.toDateString(range.start), to: this.toDateString(range.end), label: range.label, dateLabel: range.dateLabel}));
+  }
 
   ngOnInit(): void {
-    this.api.getOrders().subscribe({
-      next: (orders) => {
-        this.orders.set(orders);
-        this.syncPeriodToAvailableData();
-        this.loading.set(false);
-        this.loadOperationalData();
-      },
-      error: () => {
-        this.errorMessage.set('暫時無法載入訂單資料，請稍後再試。');
-        this.loading.set(false);
-      },
-    });
+    this.syncPeriodToToday();
+    this.loadOperationalData();
   }
 
   ngOnDestroy(): void { this.supplementalRequest?.unsubscribe(); }
@@ -196,6 +170,16 @@ export class OperationReport implements OnInit, OnDestroy {
   protected stepPeriod(direction: -1 | 1): void {
     const year = this.selectedYear();
     const month = this.selectedMonth();
+    if (this.activePeriod() === 'day') {
+      const next = new Date(this.periodDates().start);
+      next.setDate(next.getDate() + direction);
+      this.selectedYear.set(next.getFullYear());
+      this.selectedMonth.set(next.getMonth());
+      this.selectedDay.set(next.getDate());
+      this.selectedWeek.set(this.weekIndexForDate(next));
+      this.loadOperationalData();
+      return;
+    }
     if (this.activePeriod() === 'year') {
       this.selectedYear.set(year + direction);
       this.loadOperationalData();
@@ -213,60 +197,42 @@ export class OperationReport implements OnInit, OnDestroy {
     anchor.setDate(anchor.getDate() + direction * 7 + 3);
     this.selectedYear.set(anchor.getFullYear());
     this.selectedMonth.set(anchor.getMonth());
+    this.selectedDay.set(anchor.getDate());
     this.selectedWeek.set(this.weekIndexForDate(anchor));
     this.loadOperationalData();
   }
 
-  protected openHistory(from?: string, to?: string, warehouseId?: number, sheet = 'overview', status?: string): void {
+  protected openHistory(sheet = 'overview', metric = ''): void {
     const dates = this.periodDates();
     void this.router.navigate(['/dispatch/history'], {queryParams: {
-      from: from ?? this.toDateString(dates.start),
-      to: to ?? this.toDateString(dates.end),
-      ...(warehouseId ? {warehouseId} : {}),
+      from: this.toDateString(dates.start),
+      to: this.toDateString(dates.end),
       sheet,
-      ...(status ? {status} : {}),
+      ...(metric ? {metric} : {}),
     }});
   }
 
-  protected drillInto(bucket: ChartBucket): void { this.openHistory(bucket.from, bucket.to, undefined, 'orders'); }
-  protected openWarehouse(row: WarehouseReportRow, sheet = 'orders'): void { this.openHistory(undefined, undefined, row.warehouseId ?? undefined, sheet); }
-  protected openOrders(status?: string): void { this.openHistory(undefined, undefined, undefined, 'orders', status); }
-  protected openSheet(sheet: string): void { this.openHistory(undefined, undefined, undefined, sheet); }
-  protected openOrder(order: OrderDto): void {
-    void this.router.navigate(['/dispatch/orders'], {queryParams: {order: order.orderNumber}});
-  }
+  protected openSheet(sheet: string): void { this.openHistory(sheet); }
+  protected openMetric(sheet: string, metric: string): void { this.openHistory(sheet, metric); }
+  protected dialDegrees(value: number | null): number { return value === null ? 0 : Math.min(100, Math.max(0, value)) * 3.6; }
 
-  protected chartHeading(): string {
-    return this.activePeriod() === 'year' ? '每月已完成 / 總訂單' : this.activePeriod() === 'month' ? '每週已完成 / 總訂單' : '週一至週六已完成 / 總訂單';
-  }
-
-  protected chartFootnote(): string {
-    const period = this.activePeriod();
-    const sundayCount = period === 'week' ? this.ordersInPeriod().filter(order => this.parseDate(order.deliveryDate).getDay() === 0).length : 0;
-    const scope = period === 'month' ? '按週一至週日分週，月初與月底僅計入本月日期。'
-      : period === 'week' ? `一週固定週一至週日；週日休息，圖表只顯示週一至週六。${sundayCount ? `本週另有 ${sundayCount} 筆週日歷史訂單，仍保留在總覽統計與歷史查詢。` : ''}` : '';
-    return `依預定配送日分組，顯示查詢當下的訂單狀態。${scope}點選${period === 'year' ? '月份' : period === 'month' ? '週別' : '日期'}可查看明細。`;
+  protected openWarehouse(warehouseId: number | null): void {
+    const dates = this.periodDates();
+    void this.router.navigate(['/dispatch/history'], {queryParams: {
+      from: this.toDateString(dates.start), to: this.toDateString(dates.end), sheet: 'loading-quality',
+      ...(warehouseId === null ? {} : {warehouseId}),
+    }});
   }
 
   protected percent(value: number | null): string { return value === null ? '—' : `${value.toFixed(1)}%`; }
   protected number(value: number | null): string { return value === null ? '—' : value.toLocaleString('zh-TW', {maximumFractionDigits: 1}); }
   protected retryOperationalData(): void { this.loadOperationalData(); }
 
-  protected statusLabel(status: OrderDto['status']): string {
-    return {PENDING_CONFIRM: '待審核', CONFIRMED: '待排車', LOADED: '已點交', IN_DELIVERY: '配送中',
-      NO_SIGNATURE: '無人簽收', COMPLETED: '已完成', CANCELLED: '已取消', FAILED: '配送失敗'}[status];
-  }
-
-  private syncPeriodToAvailableData(): void {
-    const today = this.todayTaipei();
-    const latest = this.orders()
-      .filter(order => order.deliveryDate <= today)
-      .map((order) => this.parseDate(order.deliveryDate))
-      .filter((date) => !Number.isNaN(date.getTime()))
-      .sort((left, right) => right.getTime() - left.getTime())[0];
-    const anchor = latest ?? this.parseDate(today);
+  private syncPeriodToToday(): void {
+    const anchor = this.parseDate(this.todayTaipei());
     this.selectedYear.set(anchor.getFullYear());
     this.selectedMonth.set(anchor.getMonth());
+    this.selectedDay.set(anchor.getDate());
     this.selectedWeek.set(this.weekIndexForDate(anchor));
   }
 
@@ -276,98 +242,51 @@ export class OperationReport implements OnInit, OnDestroy {
     this.supplementalRequest?.unsubscribe();
     this.operationalLoading.set(true);
     this.operationalError.set('');
-    this.warehouseError.set('');
+    this.outcomeError.set('');
     this.exceptionError.set('');
     this.operationalData.set(null);
     this.supplementalRequest = forkJoin({
       performance: this.api.getReportPerformance(query).pipe(catchError(() => {
-        this.operationalError.set('人員與出車紀錄暫時無法載入；訂單、倉庫與異常資料仍可查看。');
+        this.operationalError.set('人員打卡與出車資料暫時無法載入。');
         return of(null);
       })),
-      warehouses: this.api.getReportWarehouses(query).pipe(catchError(() => {
-        this.warehouseError.set('倉庫訂單查詢暫時失敗；已取得的人車倉庫清單與訂單現況仍保留。');
+      outcomes: this.api.getReportOutcomes({...query, includeDetails: true}).pipe(catchError(() => {
+        this.outcomeError.set('配送成果資料暫時無法載入。');
         return of(null);
       })),
       exceptions: this.api.getReportExceptions(query).pipe(catchError(() => {
-        this.exceptionError.set('異常案件暫時無法載入；其餘報表仍可查看。');
+        this.exceptionError.set('異常案件暫時無法載入。');
         return of(null);
       })),
     }).subscribe({
       next: (data) => {
         this.operationalData.set(data);
+        this.loading.set(false);
         this.operationalLoading.set(false);
       },
       error: () => {
-        this.operationalError.set('運力與倉庫資料暫時無法載入，訂單現況仍可查看。');
+        this.operationalError.set('營運資料暫時無法載入。');
         this.operationalLoading.set(false);
+        this.loading.set(false);
       },
     });
-  }
-
-  private collectionRows<T>(collection: ReportCollectionDto | null, key: string): T[] {
-    const value = collection?.[key];
-    return Array.isArray(value) ? value as T[] : [];
-  }
-
-  private collectionNumber(collection: ReportCollectionDto, key: string): number {
-    const value = collection[key];
-    return typeof value === 'number' ? value : 0;
-  }
-
-  private rate(numerator: number, denominator: number): number | null {
-    return denominator > 0 ? numerator / denominator * 100 : null;
   }
 
   private todayTaipei(): string {
     return new Intl.DateTimeFormat('sv-SE', {timeZone: 'Asia/Taipei'}).format(new Date());
   }
 
-  private ordersInPeriod(): OrderDto[] {
-    const {start, end} = this.periodDates();
-    return this.orders().filter((order) => {
-      const date = this.parseDate(order.deliveryDate);
-      return date >= start && date <= end;
-    });
-  }
-
-  private buildChartData(orders: OrderDto[]): ChartBucket[] {
-    const {start} = this.periodDates();
-    const buckets = this.activePeriod() === 'year'
-      ? Array.from({length: 12}, (_, month) => {
-          const from = new Date(this.selectedYear(), month, 1);
-          return {label: `${month + 1}月`, from, to: new Date(this.selectedYear(), month + 1, 0)};
-        })
-      : this.activePeriod() === 'month'
-        ? this.monthWeeks().map((week, index) => ({label: `第${index + 1}週`, from: week.start, to: week.end}))
-        : Array.from({length: 6}, (_, day) => {
-            const from = new Date(start);
-            from.setDate(start.getDate() + day);
-            return {label: this.weekdayLabel(from), from, to: from};
-          });
-
-    const counts = buckets.map(({from, to}) => {
-      const included = orders.filter((order) => {
-        const date = this.parseDate(order.deliveryDate);
-        return date >= from && date <= to;
-      });
-      return {total: included.length, completed: included.filter((order) => order.status === 'COMPLETED').length};
-    });
-    const max = Math.max(1, ...counts.map((count) => count.completed));
-    return buckets.map((bucket, index) => ({
-      label: bucket.label,
-      date: this.bucketDateLabel(bucket.from, bucket.to),
-      ...counts[index],
-      height: (counts[index].completed / max) * 100,
-      from: this.toDateString(bucket.from),
-      to: this.toDateString(bucket.to),
-    }));
-  }
 
   private periodDates(): {start: Date; end: Date} {
     const year = this.selectedYear();
     const month = this.selectedMonth();
     if (this.activePeriod() === 'year') return {start: new Date(year, 0, 1), end: new Date(year, 11, 31)};
     if (this.activePeriod() === 'month') return {start: new Date(year, month, 1), end: new Date(year, month + 1, 0)};
+    if (this.activePeriod() === 'day') {
+      const day = Math.min(this.selectedDay(), new Date(year, month + 1, 0).getDate());
+      const start = new Date(year, month, day);
+      return {start, end: new Date(start)};
+    }
     const start = this.mondayOf(new Date(year, month, 1));
     start.setDate(start.getDate() + this.selectedWeek() * 7);
     const end = new Date(start);
@@ -375,8 +294,9 @@ export class OperationReport implements OnInit, OnDestroy {
     return {start, end};
   }
 
-  private periodRangeLabel(): string {
+  protected periodRangeLabel(): string {
     const {start, end} = this.periodDates();
+    if (this.activePeriod() === 'day') return this.toDateString(start).replaceAll('-', '/');
     return `${this.toDateString(start).replaceAll('-', '/')} — ${this.toDateString(end).replaceAll('-', '/')}`;
   }
 
@@ -404,14 +324,6 @@ export class OperationReport implements OnInit, OnDestroy {
     return weeks;
   }
 
-  private bucketDateLabel(from: Date, to: Date): string {
-    if (this.activePeriod() === 'year') return `${from.getFullYear()}/${String(from.getMonth() + 1).padStart(2, '0')}`;
-    if (this.activePeriod() === 'month') return `${this.monthDayLabel(from)}–${this.monthDayLabel(to)}`;
-    return this.monthDayLabel(from);
-  }
-
   private parseDate(value: string): Date { return new Date(`${value}T00:00:00`); }
   private toDateString(value: Date): string { return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`; }
-  private weekdayLabel(value: Date): string { return ['日', '一', '二', '三', '四', '五', '六'][value.getDay()]; }
-  private monthDayLabel(value: Date): string { return `${String(value.getMonth() + 1).padStart(2, '0')}/${String(value.getDate()).padStart(2, '0')}`; }
 }

@@ -32,4 +32,24 @@ public class PreTripInspection {
     @Column(nullable = false) public boolean passed;
     @Column(nullable = false) public LocalDateTime submittedAt;
     public LocalDateTime invalidatedAt;
+
+    // Read accessors shared with the imported operational report queries.
+    public Long getId() { return id; }
+    public void setId(Long value) { id = value; }
+    public Long getRouteId() { return routeId; }
+    public void setRouteId(Long value) { routeId = value; }
+    public Long getDriverId() { return driverId; }
+    public void setDriverId(Long value) { driverId = value; }
+    public Long getVehicleId() { return vehicleId; }
+    public void setVehicleId(Long value) { vehicleId = value; }
+    public Integer getRouteVersion() { return routeVersion; }
+    public void setRouteVersion(Integer value) { routeVersion = value; }
+    public LocalDate getWorkDate() { return workDate; }
+    public void setWorkDate(LocalDate value) { workDate = value; }
+    public Boolean getPassed() { return passed; }
+    public void setPassed(boolean value) { passed = value; }
+    public LocalDateTime getSubmittedAt() { return submittedAt; }
+    public void setSubmittedAt(LocalDateTime value) { submittedAt = value; }
+    public LocalDateTime getInvalidatedAt() { return invalidatedAt; }
+    public void setInvalidatedAt(LocalDateTime value) { invalidatedAt = value; }
 }

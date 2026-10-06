@@ -8,6 +8,10 @@ const THEME_STORAGE_KEY = 'logistics-dispatch.admin-theme';
 export class AdminThemeService {
   readonly isLightTheme = signal(this.readSavedTheme() === 'light');
 
+  dialogPanelClass(): string[] {
+    return this.isLightTheme() ? ['dispatch-report-dialog', 'is-light-theme'] : ['dispatch-report-dialog'];
+  }
+
   toggle(): void {
     const nextTheme: AdminTheme = this.isLightTheme() ? 'dark' : 'light';
     this.isLightTheme.set(nextTheme === 'light');
