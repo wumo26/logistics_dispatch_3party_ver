@@ -1,5 +1,6 @@
 package com.example.backend.excition;
 
+import com.example.backend.dispatch.RouteOptimizer;
 import com.example.backend.dto.respones.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,12 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    /** Native routing can be unavailable without taking down the other APIs. */
+    @ExceptionHandler(RouteOptimizer.UnavailableException.class)
+    public ResponseEntity<ApiResponse> handleOptimizerUnavailable(RouteOptimizer.UnavailableException e) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ApiResponse.failure(e.getMessage()));
+    }
+
     /**
      * 處理目前專案使用的業務邏輯例外。
      *

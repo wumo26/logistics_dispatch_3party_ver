@@ -3,16 +3,74 @@ package com.example.backend.dispatch;
 import com.google.ortools.Loader;
 import com.google.ortools.constraintsolver.*;
 import com.google.protobuf.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 @Component
 public class RouteOptimizer {
-    static {
+    private static final Logger log = LoggerFactory.getLogger(RouteOptimizer.class);
+    // Creating the Spring bean must not load native code: a blocked DLL must not
+    // prevent login, reporting, or manual dispatch from starting.
+    private static final NativeRuntime DEFAULT_RUNTIME = new NativeRuntime(RouteOptimizer::loadNativeRuntime);
+    private final NativeRuntime nativeRuntime;
+
+    public RouteOptimizer() {
+        this(DEFAULT_RUNTIME);
+    }
+
+    RouteOptimizer(NativeRuntime nativeRuntime) {
+        this.nativeRuntime = Objects.requireNonNull(nativeRuntime);
+    }
+
+    private static void loadNativeRuntime() {
         Loader.loadNativeLibraries();
+        // Some Loader failure paths return without throwing. Verify JNI before
+        // considering the runtime ready, and release the small native probe.
+        RoutingIndexManager probe = new RoutingIndexManager(1, 1, 0);
+        probe.delete();
+    }
+
+    static final class NativeRuntime {
+        private final Runnable loader;
+        private boolean loaded;
+        private Throwable failure;
+
+        NativeRuntime(Runnable loader) {
+            this.loader = Objects.requireNonNull(loader);
+        }
+
+        synchronized void ensureLoaded() {
+            if (failure != null) {
+                throw new UnavailableException(failure);
+            }
+            if (loaded) {
+                return;
+            }
+            try {
+                loader.run();
+                loaded = true;
+            } catch (RuntimeException | LinkageError e) {
+                // Cache failure to avoid extracting/reloading blocked libraries
+                // on every request. Restart after the environment is repaired.
+                failure = e;
+                log.error("OR-Tools native runtime unavailable; automatic routing is disabled until restart", e);
+                throw new UnavailableException(e);
+            }
+        }
+    }
+
+    public static final class UnavailableException extends IllegalStateException {
+        public UnavailableException(Throwable cause) {
+            super("自動排車／門市順序最佳化暫時無法使用：OR-Tools 原生程式庫載入失敗。"
+                    + "若 Windows 顯示應用程式控制封鎖，請由系統管理員核准程式庫，"
+                    + "或使用 Linux 後端容器；處理後請重新啟動後端。", cause);
+        }
     }
 
     public RouteResult solve(
@@ -39,6 +97,7 @@ public class RouteOptimizer {
             int depotIndex,
             int[] allowedVehicleByNode
     ) {
+        nativeRuntime.ensureLoaded();
         RoutingIndexManager routingIndexManager = new RoutingIndexManager(
                 distanceMatrix.length,
                 vehicleCapacities.length,
