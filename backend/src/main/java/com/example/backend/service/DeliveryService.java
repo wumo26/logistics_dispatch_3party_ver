@@ -96,6 +96,7 @@ public class DeliveryService {
 
         List<LoadingResponse.ItemResult> itemResults = validateAndRecordItems(
                 order, driverId, request.getItems(), now);
+        order.setLoadingNotes(trimToNull(request.getNotes()));
         boolean itemContentsMatched = itemResults.stream().allMatch(LoadingResponse.ItemResult::getMatched);
 
         if (loaded == expected && itemContentsMatched) {
@@ -386,6 +387,7 @@ public class DeliveryService {
             int actual = requested.getLoadedQuantity() == null
                     ? item.getExpectedQuantity() : requested.getLoadedQuantity();
             item.setLoadedQuantity(actual);
+            item.setLoadingMismatchReported(actual != item.getExpectedQuantity());
             item.setCheckedAt(checkedAt);
             item.setCheckedByDriverId(driverId);
             item.setLoadingNotes(trimToNull(requested.getNotes()));

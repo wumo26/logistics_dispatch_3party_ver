@@ -128,6 +128,15 @@ class DeliveryServiceTest {
     }
 
     @Test
+    void 點交備註與建單備註分開保存供歷史報表查詢() {
+        order.setNotes("原始建單備註");
+        service.load(DRIVER_ID, loading(12, " 外箱已擦乾 "));
+
+        assertEquals("外箱已擦乾", order.getLoadingNotes());
+        assertEquals("原始建單備註", order.getNotes());
+    }
+
+    @Test
     void 安全檢查未通過_不能點交() {
         doThrow(new IllegalArgumentException("安全檢查尚未通過"))
                 .when(preTripInspectionService).requirePassed(DRIVER_ID, ROUTE_ID);
@@ -186,6 +195,9 @@ class DeliveryServiceTest {
         assertEquals(1, response.getCheckedItemCount());
         assertEquals(2, response.getTotalItemCount());
         ArgumentCaptor<ExceptionCasesEntity> savedCase = ArgumentCaptor.forClass(ExceptionCasesEntity.class);
+        assertEquals("紅茶短少", order.getLoadingNotes());
+        assertFalse(order.getItems().get(0).isLoadingMismatchReported());
+        assertTrue(order.getItems().get(1).isLoadingMismatchReported());
         verify(exceptionCasesDAO).save(savedCase.capture());
         assertTrue(savedCase.getValue().getDescription().contains("紅茶 應到 5箱、實點 4箱"),
                 savedCase.getValue().getDescription());

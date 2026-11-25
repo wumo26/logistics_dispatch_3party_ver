@@ -38,6 +38,16 @@ public class OrderItemDTO {
     private Long checkedByDriverId;
     private String loadingNotes;
 
+    private boolean loadingMismatchReported;
+
+    public boolean isLoadingMismatchReported() {
+        return loadingMismatchReported;
+    }
+
+    public void setLoadingMismatchReported(boolean loadingMismatchReported) {
+        this.loadingMismatchReported = loadingMismatchReported;
+    }
+
     public Long getId() {
         return id;
     }

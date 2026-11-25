@@ -56,6 +56,18 @@ public class OrderItemsEntity {
     @Column(length = 255)
     private String loadingNotes;
 
+    /** 已回報點交不符；與尚未記錄實點數量分開，舊資料預設 false。 */
+    @Column(nullable = false)
+    private boolean loadingMismatchReported;
+
+    public boolean isLoadingMismatchReported() {
+        return loadingMismatchReported;
+    }
+
+    public void setLoadingMismatchReported(boolean loadingMismatchReported) {
+        this.loadingMismatchReported = loadingMismatchReported;
+    }
+
     public Long getId() {
         return id;
     }

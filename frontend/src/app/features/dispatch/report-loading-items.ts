@@ -9,9 +9,10 @@ interface LoadingItemEvidence {
   sequence?: number | null;
   checkedAt?: string | null;
   loadingNotes?: string | null;
+  loadingMismatchReported?: boolean;
 }
 
-export type LoadingItemStatus = 'MISSING' | 'EXCESS' | 'MATCHED' | 'NOT_RECORDED';
+export type LoadingItemStatus = 'MISSING' | 'EXCESS' | 'MATCHED' | 'NOT_RECORDED' | 'MISMATCH_REPORTED';
 
 export interface ReportLoadingItem {
   id: number | undefined;
@@ -50,22 +51,26 @@ export function reportLoadingItems(items: readonly LoadingItemEvidence[] | null 
       notes: item.loadingNotes?.trim() || null,
       status: difference !== null && difference > 0 ? 'MISSING'
         : difference !== null && difference < 0 ? 'EXCESS'
-          : difference === null ? 'NOT_RECORDED' : 'MATCHED',
+          : item.loadingMismatchReported ? 'MISMATCH_REPORTED'
+            : difference === null ? 'NOT_RECORDED' : 'MATCHED',
     };
   });
 }
 
 export function loadingItemStatusLabel(status: LoadingItemStatus): string {
-  return {MISSING: '數量不足', EXCESS: '數量超出', MATCHED: '相符', NOT_RECORDED: '數量未記錄'}[status];
+  return {MISSING: '數量不足', EXCESS: '數量超出', MATCHED: '相符', NOT_RECORDED: '數量未記錄', MISMATCH_REPORTED: '點交不符'}[status];
 }
 
 /** Describe each product separately; quantities with different units must not be added together. */
 export function loadingMismatchSummary(items: readonly ReportLoadingItem[]): string {
   if (!items.length) return '商品點交明細未記錄';
   const differences = items.filter(item => item.status !== 'MATCHED');
-  if (!differences.length) return '逐項數量相符，請核對整單箱數';
+  if (!differences.length) return '逐項數量相符，請核對整單箱數或備註';
   return differences.map(item => item.itemName + '：' + (item.status === 'MISSING'
     ? '缺少 ' + item.missingQuantity + ' ' + item.unit
     : item.status === 'EXCESS' ? '多出 ' + item.excessQuantity + ' ' + item.unit
-      : '點交數量未記錄')).join('\n');
+      : item.status === 'MISMATCH_REPORTED' ? item.loadedQuantity === null
+        ? '已回報點交不符，實點數量未記錄'
+        : '已回報點交不符，實點 ' + item.loadedQuantity + ' ' + item.unit
+        : '點交數量未記錄')).join('\n');
 }
