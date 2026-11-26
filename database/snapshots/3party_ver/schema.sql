@@ -1,4 +1,8 @@
--- Public structural snapshot; import only into a new, empty schema.
+-- MySQL dump 10.13  Distrib 8.0.46, for Win64 (x86_64)
+--
+-- Host: 127.0.0.1    Database: 3party_ver
+-- ------------------------------------------------------
+-- Server version	8.0.46
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -10,6 +14,11 @@
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `admin_sticky_notes`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `admin_sticky_notes` (
@@ -26,6 +35,16 @@ CREATE TABLE `admin_sticky_notes` (
   KEY `idx_admin_sticky_notes_owner_sort` (`admin_id`,`sort_order`,`updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `admin_sticky_notes`
+--
+
+
+--
+-- Table structure for table `admin_users`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `admin_users` (
@@ -39,8 +58,18 @@ CREATE TABLE `admin_users` (
   `ai_api_key_updated_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_admin_users_account` (`account`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `admin_users`
+--
+
+
+--
+-- Table structure for table `attendance_records`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `attendance_records` (
@@ -70,8 +99,18 @@ CREATE TABLE `attendance_records` (
   KEY `idx_attendance_driver_date` (`driver_id`,`work_date`),
   CONSTRAINT `fk_attendance_driver` FOREIGN KEY (`driver_id`) REFERENCES `drivers` (`id`),
   CONSTRAINT `fk_attendance_shift` FOREIGN KEY (`driver_shift_id`) REFERENCES `driver_shifts` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `attendance_records`
+--
+
+
+--
+-- Table structure for table `delivery_records`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `delivery_records` (
@@ -96,8 +135,18 @@ CREATE TABLE `delivery_records` (
   `handled_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_delivery_records_order` (`order_id`,`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=155 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `delivery_records`
+--
+
+
+--
+-- Table structure for table `dispatch_templates`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `dispatch_templates` (
@@ -110,6 +159,16 @@ CREATE TABLE `dispatch_templates` (
   UNIQUE KEY `uk_dispatch_templates_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `dispatch_templates`
+--
+
+
+--
+-- Table structure for table `distance_matrix_cache`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `distance_matrix_cache` (
@@ -125,6 +184,16 @@ CREATE TABLE `distance_matrix_cache` (
   UNIQUE KEY `uk_matrix_from_to` (`from_type`,`from_id`,`to_type`,`to_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `distance_matrix_cache`
+--
+
+
+--
+-- Table structure for table `driver_account_applications`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `driver_account_applications` (
@@ -145,8 +214,18 @@ CREATE TABLE `driver_account_applications` (
   KEY `idx_driver_account_applications_status_applied` (`status`,`applied_at`),
   KEY `fk_driver_account_applications_driver` (`approved_driver_id`),
   CONSTRAINT `fk_driver_account_applications_driver` FOREIGN KEY (`approved_driver_id`) REFERENCES `drivers` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `driver_account_applications`
+--
+
+
+--
+-- Table structure for table `driver_leave_request_events`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `driver_leave_request_events` (
@@ -165,8 +244,18 @@ CREATE TABLE `driver_leave_request_events` (
   `reason` varchar(500) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_leave_event_request_time` (`leave_request_id`,`occurred_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=43 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `driver_leave_request_events`
+--
+
+
+--
+-- Table structure for table `driver_leave_requests`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `driver_leave_requests` (
@@ -202,8 +291,18 @@ CREATE TABLE `driver_leave_requests` (
   KEY `idx_driver_leave_shift` (`driver_shift_id`),
   KEY `idx_driver_leave_status_requested` (`status`,`requested_at`),
   KEY `idx_driver_leave_batch` (`batch_id`,`work_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `driver_leave_requests`
+--
+
+
+--
+-- Table structure for table `driver_messages`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `driver_messages` (
@@ -215,8 +314,18 @@ CREATE TABLE `driver_messages` (
   `sender_admin_id` bigint DEFAULT NULL,
   `sender_type` enum('ADMIN','DRIVER') NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=89 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `driver_messages`
+--
+
+
+--
+-- Table structure for table `driver_shifts`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `driver_shifts` (
@@ -236,8 +345,18 @@ CREATE TABLE `driver_shifts` (
   KEY `idx_driver_shifts_month_date` (`schedule_month_id`,`work_date`),
   CONSTRAINT `fk_driver_shifts_driver` FOREIGN KEY (`driver_id`) REFERENCES `drivers` (`id`),
   CONSTRAINT `fk_driver_shifts_month` FOREIGN KEY (`schedule_month_id`) REFERENCES `schedule_months` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=721 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `driver_shifts`
+--
+
+
+--
+-- Table structure for table `drivers`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `drivers` (
@@ -255,8 +374,18 @@ CREATE TABLE `drivers` (
   `warehouse_id` bigint DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `UKqpri8sn139f15suhc00v30tse` (`account`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=47 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `drivers`
+--
+
+
+--
+-- Table structure for table `emergency_leave_requests`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `emergency_leave_requests` (
@@ -290,8 +419,18 @@ CREATE TABLE `emergency_leave_requests` (
   CONSTRAINT `fk_emergency_leave_replacement_driver` FOREIGN KEY (`replacement_driver_id`) REFERENCES `drivers` (`id`),
   CONSTRAINT `fk_emergency_leave_route` FOREIGN KEY (`route_id`) REFERENCES `routes` (`id`),
   CONSTRAINT `fk_emergency_leave_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `emergency_leave_requests`
+--
+
+
+--
+-- Table structure for table `exception_cases`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `exception_cases` (
@@ -311,8 +450,18 @@ CREATE TABLE `exception_cases` (
   PRIMARY KEY (`id`),
   KEY `idx_exception_cases_status_created` (`status`,`created_at`),
   KEY `idx_exception_cases_due` (`status`,`queued_at`,`review_available_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `exception_cases`
+--
+
+
+--
+-- Table structure for table `flyway_schema_history`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `flyway_schema_history` (
@@ -330,6 +479,16 @@ CREATE TABLE `flyway_schema_history` (
   KEY `flyway_schema_history_s_idx` (`success`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `flyway_schema_history`
+--
+
+
+--
+-- Table structure for table `fuel_price_history`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `fuel_price_history` (
@@ -341,8 +500,18 @@ CREATE TABLE `fuel_price_history` (
   `fetched_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_fuel_price_type_effective` (`fuel_type`,`effective_from`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `fuel_price_history`
+--
+
+
+--
+-- Table structure for table `gps_pings`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `gps_pings` (
@@ -353,8 +522,18 @@ CREATE TABLE `gps_pings` (
   `timestamp` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_gps_driver_time` (`driver_id`,`timestamp`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14288 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `gps_pings`
+--
+
+
+--
+-- Table structure for table `mileage_logs`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `mileage_logs` (
@@ -377,8 +556,18 @@ CREATE TABLE `mileage_logs` (
   `end_mileage_photo_recorded_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_mileage_logs_driver_date` (`driver_id`,`date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `mileage_logs`
+--
+
+
+--
+-- Table structure for table `order_items`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `order_items` (
@@ -397,8 +586,18 @@ CREATE TABLE `order_items` (
   `loading_mismatch_reported` bit(1) NOT NULL DEFAULT b'0',
   PRIMARY KEY (`id`),
   KEY `idx_order_items_order_sequence` (`order_id`,`sequence`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=135 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `order_items`
+--
+
+
+--
+-- Table structure for table `orders`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `orders` (
@@ -427,8 +626,18 @@ CREATE TABLE `orders` (
   UNIQUE KEY `UKnthkiu7pgmnqnu86i2jyoe2v7` (`order_number`),
   KEY `fk_orders_parent` (`parent_order_id`),
   CONSTRAINT `fk_orders_parent` FOREIGN KEY (`parent_order_id`) REFERENCES `orders` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=189 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `orders`
+--
+
+
+--
+-- Table structure for table `pre_trip_inspections`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `pre_trip_inspections` (
@@ -457,8 +666,18 @@ CREATE TABLE `pre_trip_inspections` (
   `invalidated_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_pre_trip_route` (`route_id`,`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `pre_trip_inspections`
+--
+
+
+--
+-- Table structure for table `route_leg_mileages`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `route_leg_mileages` (
@@ -487,6 +706,16 @@ CREATE TABLE `route_leg_mileages` (
   KEY `idx_route_leg_driver_time` (`driver_id`,`started_at`,`ended_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `route_leg_mileages`
+--
+
+
+--
+-- Table structure for table `route_template_stores`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `route_template_stores` (
@@ -502,6 +731,16 @@ CREATE TABLE `route_template_stores` (
   CONSTRAINT `fk_tpl_stores_template` FOREIGN KEY (`template_id`) REFERENCES `route_templates` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `route_template_stores`
+--
+
+
+--
+-- Table structure for table `route_templates`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `route_templates` (
@@ -520,6 +759,16 @@ CREATE TABLE `route_templates` (
   CONSTRAINT `fk_route_templates_warehouse` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `route_templates`
+--
+
+
+--
+-- Table structure for table `route_vehicle_segments`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `route_vehicle_segments` (
@@ -561,8 +810,18 @@ CREATE TABLE `route_vehicle_segments` (
   CONSTRAINT `fk_route_vehicle_segments_mileage` FOREIGN KEY (`source_mileage_log_id`) REFERENCES `mileage_logs` (`id`),
   CONSTRAINT `fk_route_vehicle_segments_route` FOREIGN KEY (`route_id`) REFERENCES `routes` (`id`),
   CONSTRAINT `fk_route_vehicle_segments_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=48 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `route_vehicle_segments`
+--
+
+
+--
+-- Table structure for table `routes`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `routes` (
@@ -585,8 +844,18 @@ CREATE TABLE `routes` (
   PRIMARY KEY (`id`),
   KEY `fk_routes_dispatch_template` (`template_id`),
   CONSTRAINT `fk_routes_dispatch_template` FOREIGN KEY (`template_id`) REFERENCES `dispatch_templates` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=131 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `routes`
+--
+
+
+--
+-- Table structure for table `schedule_months`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `schedule_months` (
@@ -598,8 +867,18 @@ CREATE TABLE `schedule_months` (
   `version` bigint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_schedule_months_month` (`schedule_month`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `schedule_months`
+--
+
+
+--
+-- Table structure for table `stores`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `stores` (
@@ -617,8 +896,18 @@ CREATE TABLE `stores` (
   `store_code` varchar(20) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `UKde7abdc4t7p11hmkx9fw4qa4` (`store_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `stores`
+--
+
+
+--
+-- Table structure for table `template_routes`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `template_routes` (
@@ -639,6 +928,16 @@ CREATE TABLE `template_routes` (
   CONSTRAINT `fk_tpl_routes_driver` FOREIGN KEY (`driver_id`) REFERENCES `drivers` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `template_routes`
+--
+
+
+--
+-- Table structure for table `template_stops`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `template_stops` (
@@ -654,6 +953,16 @@ CREATE TABLE `template_stops` (
   CONSTRAINT `fk_dispatch_template_stops_store` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `template_stops`
+--
+
+
+--
+-- Table structure for table `vehicle_maintenance_policies`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `vehicle_maintenance_policies` (
@@ -664,6 +973,16 @@ CREATE TABLE `vehicle_maintenance_policies` (
   PRIMARY KEY (`tonnage`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `vehicle_maintenance_policies`
+--
+
+
+--
+-- Table structure for table `vehicle_maintenance_records`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `vehicle_maintenance_records` (
@@ -682,8 +1001,18 @@ CREATE TABLE `vehicle_maintenance_records` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_vehicle_maintenance_active_vehicle` (`active_vehicle_id`),
   KEY `idx_vehicle_maintenance_vehicle` (`vehicle_id`,`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `vehicle_maintenance_records`
+--
+
+
+--
+-- Table structure for table `vehicle_maintenance_settings`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `vehicle_maintenance_settings` (
@@ -692,6 +1021,16 @@ CREATE TABLE `vehicle_maintenance_settings` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `vehicle_maintenance_settings`
+--
+
+
+--
+-- Table structure for table `vehicle_replacement_events`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `vehicle_replacement_events` (
@@ -727,6 +1066,16 @@ CREATE TABLE `vehicle_replacement_events` (
   CONSTRAINT `fk_vehicle_replacement_route` FOREIGN KEY (`route_id`) REFERENCES `routes` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `vehicle_replacement_events`
+--
+
+
+--
+-- Table structure for table `vehicles`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `vehicles` (
@@ -745,8 +1094,18 @@ CREATE TABLE `vehicles` (
   `last_major_maintenance_km` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `UKh6kd0awsaislk5n2f3ea1hhuq` (`plate_number`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=74 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `vehicles`
+--
+
+
+--
+-- Table structure for table `warehouses`
+--
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `warehouses` (
@@ -760,8 +1119,21 @@ CREATE TABLE `warehouses` (
   `warehouse_code` varchar(20) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `UK1bidj95gewy1e3q54xbdrxykv` (`warehouse_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `warehouses`
+--
+
+
+--
+-- Dumping events for database '3party_ver'
+--
+
+--
+-- Dumping routines for database '3party_ver'
+--
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -771,3 +1143,5 @@ CREATE TABLE `warehouses` (
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2026-11-26 17:12:59

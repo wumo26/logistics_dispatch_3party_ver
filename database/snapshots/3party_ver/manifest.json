@@ -1,18 +1,41 @@
 {
   "sourceSchema": "3party_ver",
   "serverFamily": "MySQL 8.0",
-  "capturedAtUtc": "2026-11-26 08:07:04.475106 UTC",
+  "sourceServerVersion": "8.0.46",
+  "capturedAtUtc": "2026-11-26T09:12:59.048Z",
+  "capturedAtTaipei": "2026-11-26 17:12:59 +08:00",
   "tables": 36,
   "latestMigration": "12",
-  "format": "public-de-identified-snapshot-v1",
+  "format": "public-complete-non-test-masked-v3",
   "sourceModified": false,
-  "loginCredentialsIncluded": false,
+  "deIdentified": true,
+  "loginPasswordHashesIncluded": false,
   "rawGpsIncluded": false,
-  "identityPolicy": "IDs remapped within the snapshot; names, accounts and business identifiers replaced. No reverse map is published.",
-  "locationPolicy": "GPS and location caches omitted; optional coordinates cleared and required warehouse/store coordinates set to 0. Restore real coordinates before routing.",
-  "textPolicy": "Free text, addresses, contact details, photo paths and API keys removed. Non-absence leave categories generalized to PERSONAL.",
-  "credentialPolicy": "Admin passwords are empty non-BCrypt values; driver passwords are NULL. No imported account can log in until explicitly initialized.",
-  "exclusionPolicy": "Known test markers and dependent records excluded; rows lacking required referenced parents excluded.",
+  "contactDataIncluded": false,
+  "gpsRowsIncluded": true,
+  "publicationScope": "All non-test records retained. Credentials, personal details and precise locations masked as selected by the maintainer.",
+  "identityPolicy": "Original numeric IDs and references retained; human names, accounts, vehicle plates and business identifiers replaced by snapshot labels.",
+  "fieldPolicy": "Every non-test row is retained, including GPS and account applications. Sensitive fields are masked; quantities, IDs, timestamps and ordinary status codes remain.",
+  "credentialPolicy": "All password hashes and API keys removed. Required password fields are empty; nullable password fields are NULL. No imported account has a usable login password.",
+  "locationPolicy": "All GPS rows retained, but required lat/lng values are zero and nullable coordinates are NULL. Actual positions and tracks cannot be reconstructed.",
+  "textPolicy": "Original free text, contact fields, addresses, national ID fields and photo paths cleared or replaced. Non-absence leave categories generalized to PERSONAL.",
+  "exclusionPolicy": "Only records with recognizable test markers and dependent records referring to excluded test records are omitted. Existing non-test orphan records remain unchanged.",
+  "excludedTestMarkers": [
+    "DEMO",
+    "E2E",
+    "SMOKE",
+    "REGRESSION",
+    "CODEX",
+    "TEST",
+    "測試",
+    "示範"
+  ],
+  "sourceRows": 15313,
+  "exportedRows": 15057,
+  "knownLogicalReferenceGaps": {
+    "delivery_records.order_id": 11,
+    "delivery_records.route_id": 2
+  },
   "tableRows": {
     "admin_sticky_notes": {
       "sourceRows": 0,
@@ -31,9 +54,8 @@
     },
     "delivery_records": {
       "sourceRows": 100,
-      "exportedRows": 7,
+      "exportedRows": 18,
       "excluded": {
-        "missing-required-reference": 11,
         "test-reference": 82
       }
     },
@@ -49,9 +71,9 @@
     },
     "driver_account_applications": {
       "sourceRows": 2,
-      "exportedRows": 0,
+      "exportedRows": 1,
       "excluded": {
-        "private-or-derived-table": 2
+        "test-marker": 1
       }
     },
     "driver_leave_request_events": {
@@ -101,10 +123,8 @@
     },
     "gps_pings": {
       "sourceRows": 14284,
-      "exportedRows": 0,
-      "excluded": {
-        "private-or-derived-table": 14284
-      }
+      "exportedRows": 14284,
+      "excluded": {}
     },
     "mileage_logs": {
       "sourceRows": 1,
@@ -214,7 +234,7 @@
     }
   },
   "sha256": {
-    "schema.sql": "122330a2d1dd671daea9ce31c1736c1bebf3688ebb90f49b79bfe0853c53d91c",
-    "data.sql": "29b69b5a8a9619372520c4d113f498ceebb738e1ed5c2382beac1aca7c8ce6d9"
+    "schema.sql": "c62af39bd508401d8ff6afa1a2df11a3cf54874e89aaab19455cf98acb0998e9",
+    "data.sql": "12afe2986fbd4ce3b1ef03965921e1f4b06fafc2b25e87c5143ee5fccb73de50"
   }
 }
