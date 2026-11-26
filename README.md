@@ -6,7 +6,7 @@
 
 > 核對日期：2026-11-26。本文依目前分支的程式、設定與 migration 整理，不代表所有環境已完成全功能驗收；後續更新仍須一起核對版本檔。
 >
-> **沒有預設登入帳密。** MySQL 帳號不是網站的主管／司機帳號。Git 不含實際 `backend/.env`、正式資料、上傳照片或 OSRM 路網，下載程式不會自動取得這些資料。
+> **沒有預設登入帳密。** MySQL 帳號不是網站的主管／司機帳號。Git 僅附經處理的[公開資料庫快照](database/README.md)，不含實際 `backend/.env`、原始正式資料、上傳照片或 OSRM 路網。
 
 ## 閱讀順序
 
@@ -132,6 +132,7 @@ logistics_dispatch_3party_ver/
 ├── .github/workflows/           CI／映像建置與部署
 ├── http/                        HTTP 手動請求範例
 ├── scripts/                     維護、驗證及歷史資料腳本
+├── database/                    去識別化 SQL 快照、筆數與匯入指南
 └── docs/                        功能文件與歷史設計紀錄
 ```
 
@@ -268,6 +269,8 @@ GRANT ALL PRIVILEGES ON `3party_ver`.* TO 'logistics_app'@'localhost';
 - 開發 migration 需要建表／改表權限；正式環境應另評估應用帳號與 migration 帳號分工。
 - 已有資料表的資料庫不是「空白環境」；先看[資料庫升級](#data)。
 - **不要手動依序匯入所有 migration SQL**，空白資料庫的建表交給 Flyway。
+
+想先查看既有資料關聯，也可依[公開資料庫快照指南](database/README.md)匯入另一個新空白 schema。快照不含可用登入密碼，且位置資料已清除；不要將它匯入原本的資料庫。
 
 ### 5.2 backend/.env
 
@@ -415,6 +418,8 @@ npm start
 ### 7.1 沒有預設帳號
 
 Flyway 建表但不提供可登入的預設主管；`/api/admin-users` 需要 ADMIN，所以空白資料庫的第一個主管須由維運者初始化。
+
+若匯入[去識別化快照](database/README.md)，其中的主管與司機也沒有可用密碼。請依下一節新增自己的主管帳號。
 
 `DB_USER=root` 不代表存在「root／root」網站帳號。既有環境請向維護者取得主管、司機各自的帳號；不要因登入失敗清空資料或覆寫帳密。
 
@@ -822,6 +827,12 @@ ORDER BY installed_rank;
 - `docker compose down` 通常保留 named volumes；**不要任意加 `-v`**，那會刪除資料。
 - 不要清 schema、重建資料容器或刪上傳目錄，來解決還沒查明的登入／編譯錯誤。
 
+### 12.6 Git 中的公開資料庫快照
+
+[database/](database/README.md) 保存 2026-11-26 擷取的 36 張表結構與 761 筆去識別化資料，包含對應 V12 的 Flyway 紀錄，以及每表筆數、排除規則和檔案雜湊。
+
+快照已排除可辨識的測試紀錄及其關聯、登入憑證、個人聯絡資料、照片及 GPS 軌跡。名稱與 ID 已改寫，位置與部分分類已清除或泛化，不能用來替代原始備份或重現精確原始報表。匯入至另一個新空白 schema 後，須自行初始化登入資料、補正倉庫與門市座標，才可進一步使用相關功能。
+
 <a id="api"></a>
 
 ## 13. API、授權與推播
@@ -1097,7 +1108,7 @@ IMAGE_TAG=latest
 ### 15.5 上線前安全檢查
 
 - 不直接用 MySQL root／共用開發密碼公開部署。
-- 不公開 GPS 工具、SQL dump、照片與真實軌跡。
+- 不公開 GPS 工具、未經去識別化的 SQL dump、照片與真實軌跡。
 - 只開必要服務與來源，不任意公開 DB／OSRM。
 - 確認大頭照／交貨照片目前的公開讀取規則。
 - 現有忘記密碼以帳號、手機資料核對，**不等於簡訊 OTP／Email 驗證**；公開環境須評估驗證強度、限流與風險。
@@ -1211,7 +1222,7 @@ git diff --cached
 
 - 指定檔案提交，例如 `git add README.md`，避免習慣全部加入。
 - import 新檔不會讓它自動進 Git。
-- 不推實際 `.env`、帳密、Token、SQL dump、照片、GPS、`uploads`、大型路網、建置產物與本機 SDK／IDE 設定。
+- 不推實際 `.env`、帳密、Token、未經去識別化的 SQL dump、照片、GPS、`uploads`、大型路網、建置產物與本機 SDK／IDE 設定。公開 SQL 僅使用 `database/` 中已檢查的去識別化快照。
 - 測試程式不等於測試資料；提交範圍依當次工作決定，不夾帶資料庫內容。
 - 更新前保留未提交工作，不強制覆蓋其他人的修改。
 - 分支命名依維護者規則，例如 `codex/update-readme`；本指南不宣稱 GitHub 已設任何 branch protection。
@@ -1229,20 +1240,21 @@ git diff --cached
 
 ### 18.1 延伸文件
 
-| 文件                                          | 用途／注意                                     |
-| --------------------------------------------- | ---------------------------------------------- |
-| [部署說明](docs/deployment.md)                | 原部署背景與經驗，部分歷史方案需與現行檔案核對 |
-| [API 契約](docs/api-contract.md)              | 設計背景，完整現況以 Controller／DTO 為準      |
-| [資料模型](docs/data-model.md)                | 關係背景，表結構以本分支 migration 為準        |
-| [報表口徑](docs/operations-report-scope.md)   | 指標、資料缺口、比較與查詢限制                 |
-| [行前安全檢查](docs/pre-trip-safety.md)       | 操作與權限，歷史手動升級不是新環境步驟         |
-| [車輛保養與退役](docs/vehicle-maintenance.md) | 里程及維護公式，注意跨版本 SQL 名稱            |
-| [司機所屬倉庫](docs/driver-warehouse.md)      | 人車歸屬及編組背景                             |
-| [司機請假](docs/driver-leave-calendar.md)     | 排假、臨請、補請                               |
-| [OSRM](osrm/README.md)                        | 道路處理及端點，本 README 另有 PowerShell 版本 |
-| [GPS 工具](gps-api-tester/README.md)          | 受控開發環境測試                               |
-| [專題規劃](docs/roadmap.md)                   | 歷史規劃，不是目前時程承諾                     |
-| [技術稽核紀錄](TECHNICAL_AUDIT_REPORT.md)     | 歷史檢查，不等同即時驗收結果                   |
+| 文件                                          | 用途／注意                                         |
+| --------------------------------------------- | -------------------------------------------------- |
+| [部署說明](docs/deployment.md)                | 原部署背景與經驗，部分歷史方案需與現行檔案核對     |
+| [API 契約](docs/api-contract.md)              | 設計背景，完整現況以 Controller／DTO 為準          |
+| [資料模型](docs/data-model.md)                | 關係背景，表結構以本分支 migration 為準            |
+| [報表口徑](docs/operations-report-scope.md)   | 指標、資料缺口、比較與查詢限制                     |
+| [行前安全檢查](docs/pre-trip-safety.md)       | 操作與權限，歷史手動升級不是新環境步驟             |
+| [車輛保養與退役](docs/vehicle-maintenance.md) | 里程及維護公式，注意跨版本 SQL 名稱                |
+| [司機所屬倉庫](docs/driver-warehouse.md)      | 人車歸屬及編組背景                                 |
+| [司機請假](docs/driver-leave-calendar.md)     | 排假、臨請、補請                                   |
+| [OSRM](osrm/README.md)                        | 道路處理及端點，本 README 另有 PowerShell 版本     |
+| [GPS 工具](gps-api-tester/README.md)          | 受控開發環境測試                                   |
+| [專題規劃](docs/roadmap.md)                   | 歷史規劃，不是目前時程承諾                         |
+| [技術稽核紀錄](TECHNICAL_AUDIT_REPORT.md)     | 歷史檢查，不等同即時驗收結果                       |
+| [公開資料庫快照](database/README.md)          | 完整結構、去識別化資料、筆數與新空白資料庫匯入方式 |
 
 ### 18.2 常用程式入口
 
