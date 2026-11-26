@@ -1,0 +1,563 @@
+<div class="dispatch-layout" [class.is-light-theme]="isLightTheme()">
+  <header class="workspace-header">
+    <div class="workspace-identity">
+      <a
+        class="workspace-brand"
+        routerLink="/dispatch/dashboard"
+        aria-label="捷流智慧物流，前往今日調度"
+      >
+        <app-brand-logo/>
+      </a>
+
+      <span class="workspace-divider" aria-hidden="true"></span>
+
+      <div>
+        <p class="workspace-eyebrow">物流調度</p>
+        <h1>{{ pageTitle() }}</h1>
+      </div>
+    </div>
+
+    <div class="workspace-actions">
+      <!-- 由頁面透過 DispatchHeaderService 提供，例如今日調度的「倉庫 · 資料更新於」；沒有就不顯示 -->
+      @if (headerMeta(); as meta) {
+        <span class="workspace-meta">{{ meta }}</span>
+      }
+      <span class="workspace-status">{{ user()?.displayName ?? '物流後台' }}</span>
+      <button
+        type="button"
+        class="application-notification"
+        [class.has-pending]="notificationCount() > 0"
+        [attr.aria-expanded]="isNotificationsOpen()"
+        [attr.aria-label]="notificationCount() ? '主管待辦 ' + notificationCount() + ' 項' : '主管待辦'"
+        [title]="notificationCount() ? '主管待辦 ' + notificationCount() + ' 項' : '主管待辦'"
+        (click)="toggleNotifications()"
+      >
+        <mat-icon aria-hidden="true">notifications</mat-icon>
+        @if (notificationCount() > 0) {
+          <span class="notification-badge">{{ notificationCount() > 99 ? '99+' : notificationCount() }}</span>
+        }
+      </button>
+      <button
+        type="button"
+        class="theme-toggle"
+        (click)="toggleTheme()"
+        [title]="isLightTheme() ? '切換為深色模式' : '切換為淺色模式'"
+        [attr.aria-label]="isLightTheme() ? '切換為深色模式' : '切換為淺色模式'"
+      >
+        @if (isLightTheme()) {
+          <mat-icon aria-hidden="true">dark_mode</mat-icon>
+        } @else {
+          <mat-icon aria-hidden="true">light_mode</mat-icon>
+        }
+      </button>
+      <a
+        class="profile-link"
+        routerLink="/dispatch/profile"
+        routerLinkActive="is-active"
+        title="個人設定"
+        aria-label="個人設定"
+      >
+        <mat-icon aria-hidden="true">person</mat-icon>
+      </a>
+      <button
+        type="button"
+        class="logout-button"
+        [disabled]="isSigningOut()"
+        (click)="signOut()"
+        title="登出系統"
+        aria-label="登出系統"
+      >
+        <mat-icon aria-hidden="true">logout</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  @if (isNotificationsOpen()) {
+    <section class="notification-panel" aria-label="主管待辦">
+      <header class="notification-panel__header">
+        <div>
+          <p>主管待辦</p>
+          <h2>{{ notificationCount() ? notificationCount() + ' 項待處理' : '目前沒有待辦' }}</h2>
+        </div>
+        <div class="notification-panel__header-actions">
+          <button type="button" class="notification-refresh" (click)="toggleNotifications()" title="關閉"
+                  aria-label="關閉">
+            關閉
+          </button>
+        </div>
+      </header>
+
+      @if (notificationError()) {
+        <p class="notification-feedback is-error">{{ notificationError() }}</p>
+      }
+      @if (isLoadingNotifications()) {
+        <p class="notification-empty">正在取得待辦資料...</p>
+      } @else {
+        @if (pendingApplications().length) {
+          <section class="notification-section" aria-labelledby="account-application-heading">
+            <h3 id="account-application-heading">司機帳號申請</h3>
+            @for (application of pendingApplications(); track application.id) {
+              <article class="notification-item">
+                <div>
+                  <strong>{{ application.name }}</strong>
+                  <span>{{ application.account }} · {{ application.phone }}</span>
+                  <small>{{ application.nationalIdMasked }}
+                    · {{ formatNotificationTime(application.appliedAt) }}</small>
+                </div>
+                <div class="notification-item__actions">
+                  <button
+                    type="button"
+                    class="notification-approve"
+                    (click)="approveApplication(application)"
+                    [disabled]="notificationAction() !== null"
+                  >
+                    {{ isNotificationAction('approve-application-' + application.id) ? '核准中...' : '核准' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="notification-reject"
+                    (click)="beginApplicationRejection(application)"
+                    [disabled]="notificationAction() !== null"
+                  >
+                    拒絕
+                  </button>
+                </div>
+              </article>
+            }
+          </section>
+        }
+
+        @if (pendingEmergencyLeaves().length) {
+          <section class="notification-section" aria-labelledby="emergency-leave-heading">
+            <h3 id="emergency-leave-heading">臨時離班接手安排</h3>
+            @for (leave of pendingEmergencyLeaves(); track leave.id) {
+              <article class="notification-item">
+                <div>
+                  <strong>{{ leave.driverName ?? ('司機 #' + leave.driverId) }}</strong>
+                  <span>{{ leave.plateNumber ?? '未提供車牌' }} · {{ leave.reason }}</span>
+                  <small>{{ formatNotificationTime(leave.requestedAt) }}</small>
+                </div>
+                <div class="notification-item__actions">
+                  <button
+                    type="button"
+                    class="notification-approve"
+                    (click)="reviewEmergencyLeave(leave)"
+                    [disabled]="notificationAction() !== null"
+                  >
+                    {{ isNotificationAction('load-replacements-' + leave.id) ? '讀取中...' : '安排接手' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="notification-reject"
+                    (click)="beginEmergencyLeaveRejection(leave)"
+                    [disabled]="notificationAction() !== null"
+                  >
+                    拒絕
+                  </button>
+                </div>
+              </article>
+            }
+          </section>
+        }
+
+        @if (pendingTemporaryLeaveRequests().length) {
+          <section class="notification-section" aria-labelledby="temporary-leave-review-heading">
+            <h3 id="temporary-leave-review-heading">待審當日請假</h3>
+            @for (request of pendingTemporaryLeaveRequests(); track request.id) {
+              <article class="notification-item">
+                <div>
+                  <strong>{{ request.driverName }} · {{ request.workDate }}</strong>
+                  <span>{{ temporaryLeaveRequestLabel(request) }} · {{ temporaryLeaveRequestPeriod(request) }}</span>
+                  <small>{{ formatNotificationTime(request.requestedAt) }}</small>
+                </div>
+                <div class="notification-item__actions">
+                  <button
+                    type="button"
+                    class="notification-approve"
+                    (click)="openScheduleLeaveReview()"
+                  >前往班表審核</button>
+                </div>
+              </article>
+            }
+          </section>
+        }
+
+        @if (!pendingApplications().length && !pendingEmergencyLeaves().length && !pendingTemporaryLeaveRequests().length) {
+          <p class="notification-empty">目前沒有需要主管處理的申請。</p>
+        }
+      }
+
+      @if (selectedEmergencyLeave(); as leave) {
+        <section class="notification-review" aria-labelledby="replacement-driver-heading">
+          <h3 id="replacement-driver-heading">安排 {{ leave.driverName ?? ('司機 #' + leave.driverId) }} 的接手司機</h3>
+          @if (replacementCandidates().length) {
+            <label>
+              <span>接手司機</span>
+              <select (change)="selectReplacementDriver($event)">
+                @for (candidate of replacementCandidates(); track candidate.driverId) {
+                  <option [value]="candidate.driverId">
+                    {{ candidate.name }} · {{ candidate.account }}{{ candidate.clockedIn ? ' · 已上班' : '' }}
+                  </option>
+                }
+              </select>
+            </label>
+            <button
+              type="button"
+              class="notification-approve"
+              (click)="approveEmergencyLeave()"
+              [disabled]="notificationAction() !== null"
+            >
+              {{ isNotificationAction('approve-leave-' + leave.id) ? '核准中...' : '核准並交接路線' }}
+            </button>
+          } @else if (!isNotificationAction('load-replacements-' + leave.id)) {
+            <p class="notification-feedback is-error">目前沒有符合條件的接手司機，請改為拒絕或先調整班表。</p>
+          }
+        </section>
+      }
+
+      @if (rejectionTarget(); as target) {
+        <form class="notification-review" (submit)="$event.preventDefault(); submitRejection()">
+          <h3>拒絕 {{ target.name }}</h3>
+          <label>
+            <span>拒絕原因</span>
+            <textarea rows="3"
+                      maxlength="500"
+                      [value]="rejectionReason()"
+                      (input)="updateRejectionReason($event)"
+            >
+
+            </textarea>
+          </label>
+          <div class="notification-review__actions">
+            <button type="button" class="notification-reject" (click)="cancelRejection()">取消</button>
+            <button type="submit" class="notification-approve" [disabled]="notificationAction() !== null">
+              {{ isNotificationAction('reject-' + target.kind + '-' + target.id) ? '處理中...' : '確認拒絕' }}
+            </button>
+          </div>
+        </form>
+      }
+    </section>
+  }
+
+  <aside class="dispatch-sidebar">
+    <mat-nav-list class="sidebar-nav" aria-label="物流後台主選單">
+      <p class="nav-group-title">調度作業</p>
+
+      <a
+        mat-list-item
+        class="nav-item"
+        routerLink="/dispatch/dashboard"
+        routerLinkActive="is-active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        <mat-icon matListItemIcon aria-hidden="true">account_tree</mat-icon>
+        <span>今日調度</span>
+      </a>
+
+      <p class="nav-group-title">資源準備</p>
+
+      <a
+        mat-list-item
+        class="nav-item"
+        routerLink="/dispatch/schedules"
+        routerLinkActive="is-active"
+        title="司機班表"
+        aria-label="司機班表"
+      >
+        <mat-icon matListItemIcon aria-hidden="true">calendar_month</mat-icon>
+        <span>司機班表</span>
+      </a>
+
+      <a mat-list-item class="nav-item" routerLink="/dispatch/resources" routerLinkActive="is-active">
+        <mat-icon matListItemIcon aria-hidden="true">local_shipping</mat-icon>
+        <span>人車資源</span>
+      </a>
+
+      <p class="nav-group-title">配送管理</p>
+
+      <a mat-list-item class="nav-item" routerLink="/dispatch/orders" routerLinkActive="is-active">
+        <mat-icon matListItemIcon aria-hidden="true">fact_check</mat-icon>
+        <span>訂單審核</span>
+      </a>
+
+      <p class="nav-group-title">追蹤與分析</p>
+
+      <a mat-list-item class="nav-item" routerLink="/dispatch/anomalies" routerLinkActive="is-active">
+        <mat-icon matListItemIcon aria-hidden="true">warning_amber</mat-icon>
+        <span>異常中心</span>
+      </a>
+
+      <a mat-list-item class="nav-item" routerLink="/dispatch/reports" routerLinkActive="is-active">
+        <mat-icon matListItemIcon aria-hidden="true">bar_chart</mat-icon>
+        <span>營運報表</span>
+      </a>
+
+      <a mat-list-item class="nav-item" routerLink="/dispatch/history" routerLinkActive="is-active">
+        <mat-icon matListItemIcon aria-hidden="true">history</mat-icon>
+        <span>歷史報表查詢中心</span>
+      </a>
+    </mat-nav-list>
+  </aside>
+
+  <main class="dispatch-workspace">
+    <section class="workspace-content">
+      <router-outlet/>
+    </section>
+  </main>
+
+  <button
+    type="button"
+    class="sticky-note-launcher"
+    [class.is-left]="stickyNoteDockSide() === 'left'"
+    [class.is-right]="stickyNoteDockSide() === 'right'"
+    [class.is-dragging]="isStickyNoteDragging()"
+    [style.transform]="stickyNoteLauncherTransform()"
+    [attr.aria-label]="'備忘錄，目前位於' + (stickyNoteDockSide() === 'left' ? '左側' : '右側') + '；點擊開啟，按住可拖到另一側'"
+    [attr.aria-grabbed]="isStickyNoteDragging()"
+    matTooltip="備忘錄 · 按住可拖到另一側"
+    (click)="openStickyNotesFromLauncher()"
+    (pointerdown)="startStickyNoteDrag($event)"
+    (pointermove)="moveStickyNoteDrag($event)"
+    (pointerup)="endStickyNoteDrag($event)"
+    (pointercancel)="cancelStickyNoteDrag($event)"
+  >
+    <mat-icon aria-hidden="true">push_pin</mat-icon>
+    @if (adminStickyNotes().length > 0) {
+      <span class="sticky-note-launcher__count">{{ adminStickyNotes().length > 99 ? '99+' : adminStickyNotes().length }}</span>
+    }
+  </button>
+
+  @if (chatView() !== 'closed') {
+    <section class="chat-panel" [class.is-narrow]="chatView() === 'narrow'" aria-label="聊天室">
+      <header class="chat-panel__header">
+        <h2>聊天室</h2>
+        <div class="chat-panel__actions">
+          <button
+            type="button"
+            matIconButton
+            class="chat-panel__icon-button"
+            [attr.aria-label]="chatView() === 'wide' ? '縮成窄版' : '展開'"
+            [matTooltip]="chatView() === 'wide' ? '縮成窄版' : '展開'"
+            (click)="toggleChatWidth()"
+          >
+            @if (chatView() === 'wide') {
+              <mat-icon aria-hidden="true">keyboard_double_arrow_right</mat-icon>
+            } @else {
+              <mat-icon aria-hidden="true">keyboard_double_arrow_left</mat-icon>
+            }
+          </button>
+          <button
+            type="button"
+            matIconButton
+            class="chat-panel__icon-button"
+            aria-label="收合"
+            matTooltip="收合"
+            (click)="closeChat()"
+          >
+            <mat-icon aria-hidden="true">keyboard_arrow_down</mat-icon>
+          </button>
+        </div>
+      </header>
+
+      <div class="chat-panel__body">
+        <aside class="chat-panel__contacts" aria-label="聊天對象">
+          <!-- 單選清單：選中狀態、aria-selected、上下鍵移動都由 Material 處理；再點已選中的項目不會取消 -->
+          <!-- click / Enter / 空白鍵綁在清單上：點已選中的人不會觸發 selectionChange，窄版展開要另外處理 -->
+          <mat-selection-list
+            [multiple]="false"
+            hideSingleSelectionIndicator
+            (selectionChange)="selectChatContact($event.options[0].value)"
+            (click)="expandChatIfNarrow()"
+            (keydown.enter)="expandChatIfNarrow()"
+            (keydown.space)="expandChatIfNarrow()"
+          >
+            <!-- [selected] 仍要綁：面板收合時清單會被銷毀，重新打開要照 signal 還原選中狀態 -->
+            <div matSubheader>司機</div>
+            @for (driver of chatDrivers(); track driver.account) {
+              <mat-list-option
+                [value]="{ kind: 'driver', driverId: driver.id!, name: driver.name }"
+                [selected]="isSelectedChatContact({ kind: 'driver', driverId: driver.id!, name: driver.name })"
+              >
+                <span
+                  matListItemAvatar
+                  class="chat-contact-avatar"
+                  [matBadge]="driverUnread(driver.id)"
+                  [matBadgeHidden]="driverUnread(driver.id) === 0"
+                  [matBadgeDescription]="driverUnread(driver.id) + ' 則未讀'"
+                  matBadgeSize="small"
+                >
+                  <!-- 有大頭照就顯示照片；沒上傳、或檔案不見（載入失敗）就退回名字第一個字 -->
+                  @if (driverPhotoUrl(driver); as photoUrl) {
+                    <img class="chat-contact-photo" [src]="photoUrl" alt="" (error)="markDriverPhotoFailed(driver.id)" />
+                  } @else {
+                    {{ driver.name.charAt(0) }}
+                  }
+                </span>
+                <span matListItemTitle>{{ driver.name }}</span>
+              </mat-list-option>
+            }
+          </mat-selection-list>
+
+          @if (chatDriversError()) {
+            <p class="chat-panel__contacts-error" role="alert">{{ chatDriversError() }}</p>
+          }
+        </aside>
+        @if (chatView() === 'wide') {
+          <!-- 內容要包在這個 div 裡：chat-panel__body 是兩欄 grid，散在外面的元素會各自佔一格而換列 -->
+          <div class="chat-panel__conversation">
+            @if (selectedChatContact(); as contact) {
+                <!-- 司機對話：資料來自後端 driver_messages，換人時由 loadDriverConversation 重新載入 -->
+                <h3 class="chat-panel__title">{{ contact.name }}</h3>
+                <div class="chat-messages">
+                  <!-- track 用 message.id：之後推播和送出會把新訊息合併進來，用 id 才認得出是同一則 -->
+                  @for (message of driverMessages(); track message.id) {
+                    <!-- 調度中心發的靠右，司機發的靠左 -->
+                    <p class="chat-message" [class.is-user]="message.senderType === 'ADMIN'">
+                      {{ message.content }}
+                      <small>
+                        {{ formatNotificationTime(message.createdAt) }}
+                        <!-- 只有我們發的才顯示：司機有沒有讀到回覆，是調度員要知道的 -->
+                        @if (message.senderType === 'ADMIN' && message.readAt) {
+                          · 已讀
+                        }
+                      </small>
+                    </p>
+                  } @empty {
+                    <p class="chat-panel__placeholder">還沒有和 {{ contact.name }} 的對話</p>
+                  }
+                </div>
+
+                @if (driverChatError()) {
+                  <p class="chat-panel__contacts-error" role="alert">{{ driverChatError() }}</p>
+                }
+
+                <!-- 換對象時清空輸入框，避免訊息送給錯誤的司機 -->
+                <form class="chat-composer" (ngSubmit)="sendDriverMessage()">
+                  <mat-form-field class="chat-composer__field" appearance="outline" subscriptSizing="dynamic">
+                    <!-- maxlength 跟後端的 1000 字上限一致，超過就打不進去，不用等送出才被擋 -->
+                    <textarea
+                      matInput
+                      cdkTextareaAutosize
+                      cdkAutosizeMinRows="1"
+                      cdkAutosizeMaxRows="5"
+                      maxlength="1000"
+                      [placeholder]="'回覆 ' + contact.name"
+                      name="driverChatInput"
+                      [attr.aria-label]="'輸入給 ' + contact.name + ' 的訊息'"
+                      [(ngModel)]="driverChatInput"
+                    ></textarea>
+                  </mat-form-field>
+                  <!-- 送出中或只有空白時停用；只有圖示所以要 aria-label -->
+                  <button
+                    type="submit"
+                    matIconButton
+                    aria-label="送出"
+                    [disabled]="isSendingDriverMessage() || !driverChatInput().trim()"
+                  >
+                    <mat-icon aria-hidden="true">send</mat-icon>
+                  </button>
+                </form>
+            } @else {
+              <p class="chat-panel__placeholder">請選擇司機開始對話</p>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  } @else {
+    <button
+      type="button"
+      matButton="filled"
+      class="chat-launcher"
+      (click)="openChat()"
+      [matBadge]="totalUnread() > 99 ? '99+' : totalUnread()"
+      [matBadgeHidden]="totalUnread() === 0"
+      [matBadgeDescription]="totalUnread() + ' 則司機未讀訊息'"
+    >聊天室</button>
+  }
+</div>
+
+<ng-template #stickyNotesDialog>
+  <div mat-dialog-title class="sticky-notes__header">
+    <h2>備忘錄 <span>{{ adminStickyNotes().length }}</span></h2>
+    <button type="button" matIconButton aria-label="關閉備忘錄" mat-dialog-close>
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </div>
+  <mat-dialog-content class="sticky-notes">
+    <form class="sticky-notes__form" (ngSubmit)="saveStickyNote()">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>標題（選填）</mat-label>
+        <input matInput maxlength="120" name="stickyNoteTitle" [(ngModel)]="stickyNoteTitle" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>備忘內容</mat-label>
+        <textarea
+          matInput
+          rows="3"
+          maxlength="2000"
+          required
+          name="stickyNoteContent"
+          [(ngModel)]="stickyNoteContent"
+        ></textarea>
+      </mat-form-field>
+      <div class="sticky-notes__form-actions">
+        @if (editingStickyNoteId() !== null) {
+          <button type="button" matButton (click)="cancelStickyNoteEdit()">取消編輯</button>
+        }
+        <button type="submit" matButton="filled" [disabled]="stickyNotesLoading() || stickyNoteSaving() || !stickyNoteContent().trim()">
+          {{ stickyNoteSaving() ? '送出中…' : editingStickyNoteId() !== null ? '儲存修改' : '送出備忘錄' }}
+        </button>
+      </div>
+    </form>
+
+    @if (stickyNotesError()) {
+      <p class="sticky-notes__error" role="alert">{{ stickyNotesError() }}</p>
+    }
+    @if (stickyNotesNotice()) {
+      <p class="sticky-notes__notice" role="status">{{ stickyNotesNotice() }}</p>
+    }
+
+    <section class="sticky-notes__list" aria-label="我的備忘錄">
+      @if (stickyNotesLoading()) {
+        <p class="sticky-notes__empty" role="status">載入中…</p>
+      } @else {
+        @for (note of adminStickyNotes(); track note.id; let index = $index) {
+          <article class="sticky-notes__item">
+            <header>
+              <div>
+                <div class="sticky-notes__item-meta">
+                  <span>第 {{ index + 1 }} 則</span>
+                  <small>{{ formatNotificationTime(note.updatedAt) }}</small>
+                </div>
+                <h3>{{ note.title || '未命名備忘錄' }}</h3>
+              </div>
+              <div class="sticky-notes__item-actions">
+                <button type="button" matIconButton [attr.aria-label]="'編輯：' + (note.title || '備忘錄')" (click)="editStickyNote(note)">
+                  <mat-icon aria-hidden="true">edit</mat-icon>
+                </button>
+                @if (deletingStickyNoteId() === note.id) {
+                  <button type="button" matButton class="sticky-notes__delete-confirm" [disabled]="stickyNoteDeleteBusy()" (click)="deleteStickyNote(note)">
+                    {{ stickyNoteDeleteBusy() ? '刪除中…' : '確定刪除' }}
+                  </button>
+                  <button type="button" matIconButton aria-label="取消刪除" [disabled]="stickyNoteDeleteBusy()" (click)="cancelStickyNoteDelete()">
+                    <mat-icon aria-hidden="true">close</mat-icon>
+                  </button>
+                } @else {
+                  <button type="button" matIconButton [attr.aria-label]="'刪除：' + (note.title || '備忘錄')" (click)="deleteStickyNote(note)">
+                    <mat-icon aria-hidden="true">delete_outline</mat-icon>
+                  </button>
+                }
+              </div>
+            </header>
+            <p>{{ note.content }}</p>
+          </article>
+        } @empty {
+          @if (!stickyNotesError()) {
+            <p class="sticky-notes__empty">目前沒有備忘錄</p>
+          }
+        }
+      }
+    </section>
+  </mat-dialog-content>
+</ng-template>

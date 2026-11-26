@@ -1,0 +1,95 @@
+# 後端測試 + 兩個前端的 production build。
+#
+# 什麼時候跑：
+#   - push 到 main 以外的分支：合併前就先知道有沒有壞
+#   - 被 build-images.yml 當成第一步呼叫（workflow_call）：
+#     main 上測試沒過就不建映像、不部署，壞掉的版本不會上線
+#   （PR 不另外觸發：同一個 repo 的分支 push 時已經跑過，PR 頁面會直接顯示那次的結果）
+
+name: CI
+
+on:
+  push:
+    branches-ignore: [main]
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    # 用一顆完全空白的 MySQL 驗證 V1～V最新能從頭套完。
+    # 不建立帳號、訂單或任何 demo 資料。
+    services:
+      mysql:
+        image: mysql:8.4           # 跟 deploy/docker-compose.yml 同版本
+        env:
+          MYSQL_DATABASE: logistics
+          MYSQL_ROOT_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -p$${MYSQL_ROOT_PASSWORD}"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DB_URL: jdbc:mysql://127.0.0.1:3306/logistics?serverTimezone=Asia/Taipei&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&useSSL=false
+      DB_USER: root
+      DB_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4   # 快取 ~/.gradle，第二次起省掉下載依賴的時間
+
+      # 用與後端相同版本的 Flyway，驗證空資料庫能完整套用所有 migration。
+      - name: Migrate schema
+        working-directory: .
+        run: |
+          docker run --rm --network host \
+            -v "$PWD/backend/src/main/resources/db/migration:/flyway/sql:ro" \
+            flyway/flyway:11.14.1 \
+            -url="$DB_URL" -user="$DB_USER" -password="$DB_PASSWORD" \
+            -locations=filesystem:/flyway/sql migrate
+
+      - name: Compile backend
+        run: ./gradlew classes --no-daemon
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [frontend, frontend-driver]
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'       # 跟 deploy/web/Dockerfile 同版本
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+
+      - run: npm ci --ignore-scripts
+
+      # production build 會檢查 angular.json 的 budgets，超過上限直接失敗——
+      # 這一步要在這裡擋下，不然會等到建映像時才爆
+      - name: Build
+        run: npx ng build

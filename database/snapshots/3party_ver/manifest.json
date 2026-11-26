@@ -1,0 +1,220 @@
+{
+  "sourceSchema": "3party_ver",
+  "serverFamily": "MySQL 8.0",
+  "capturedAtUtc": "2026-11-26 08:07:04.475106 UTC",
+  "tables": 36,
+  "latestMigration": "12",
+  "format": "public-de-identified-snapshot-v1",
+  "sourceModified": false,
+  "loginCredentialsIncluded": false,
+  "rawGpsIncluded": false,
+  "identityPolicy": "IDs remapped within the snapshot; names, accounts and business identifiers replaced. No reverse map is published.",
+  "locationPolicy": "GPS and location caches omitted; optional coordinates cleared and required warehouse/store coordinates set to 0. Restore real coordinates before routing.",
+  "textPolicy": "Free text, addresses, contact details, photo paths and API keys removed. Non-absence leave categories generalized to PERSONAL.",
+  "credentialPolicy": "Admin passwords are empty non-BCrypt values; driver passwords are NULL. No imported account can log in until explicitly initialized.",
+  "exclusionPolicy": "Known test markers and dependent records excluded; rows lacking required referenced parents excluded.",
+  "tableRows": {
+    "admin_sticky_notes": {
+      "sourceRows": 0,
+      "exportedRows": 0,
+      "excluded": {}
+    },
+    "admin_users": {
+      "sourceRows": 3,
+      "exportedRows": 3,
+      "excluded": {}
+    },
+    "attendance_records": {
+      "sourceRows": 12,
+      "exportedRows": 12,
+      "excluded": {}
+    },
+    "delivery_records": {
+      "sourceRows": 100,
+      "exportedRows": 7,
+      "excluded": {
+        "missing-required-reference": 11,
+        "test-reference": 82
+      }
+    },
+    "dispatch_templates": {
+      "sourceRows": 0,
+      "exportedRows": 0,
+      "excluded": {}
+    },
+    "distance_matrix_cache": {
+      "sourceRows": 0,
+      "exportedRows": 0,
+      "excluded": {}
+    },
+    "driver_account_applications": {
+      "sourceRows": 2,
+      "exportedRows": 0,
+      "excluded": {
+        "private-or-derived-table": 2
+      }
+    },
+    "driver_leave_request_events": {
+      "sourceRows": 32,
+      "exportedRows": 32,
+      "excluded": {}
+    },
+    "driver_leave_requests": {
+      "sourceRows": 32,
+      "exportedRows": 32,
+      "excluded": {}
+    },
+    "driver_messages": {
+      "sourceRows": 0,
+      "exportedRows": 0,
+      "excluded": {}
+    },
+    "driver_shifts": {
+      "sourceRows": 455,
+      "exportedRows": 455,
+      "excluded": {}
+    },
+    "drivers": {
+      "sourceRows": 8,
+      "exportedRows": 8,
+      "excluded": {}
+    },
+    "emergency_leave_requests": {
+      "sourceRows": 1,
+      "exportedRows": 1,
+      "excluded": {}
+    },
+    "exception_cases": {
+      "sourceRows": 3,
+      "exportedRows": 3,
+      "excluded": {}
+    },
+    "flyway_schema_history": {
+      "sourceRows": 12,
+      "exportedRows": 12,
+      "excluded": {}
+    },
+    "fuel_price_history": {
+      "sourceRows": 9,
+      "exportedRows": 9,
+      "excluded": {}
+    },
+    "gps_pings": {
+      "sourceRows": 14284,
+      "exportedRows": 0,
+      "excluded": {
+        "private-or-derived-table": 14284
+      }
+    },
+    "mileage_logs": {
+      "sourceRows": 1,
+      "exportedRows": 1,
+      "excluded": {}
+    },
+    "order_items": {
+      "sourceRows": 105,
+      "exportedRows": 20,
+      "excluded": {
+        "test-reference": 85
+      }
+    },
+    "orders": {
+      "sourceRows": 105,
+      "exportedRows": 20,
+      "excluded": {
+        "test-reference": 3,
+        "test-marker": 82
+      }
+    },
+    "pre_trip_inspections": {
+      "sourceRows": 0,
+      "exportedRows": 0,
+      "excluded": {}
+    },
+    "route_leg_mileages": {
+      "sourceRows": 0,
+      "exportedRows": 0,
+      "excluded": {}
+    },
+    "route_template_stores": {
+      "sourceRows": 0,
+      "exportedRows": 0,
+      "excluded": {}
+    },
+    "route_templates": {
+      "sourceRows": 0,
+      "exportedRows": 0,
+      "excluded": {}
+    },
+    "route_vehicle_segments": {
+      "sourceRows": 39,
+      "exportedRows": 38,
+      "excluded": {
+        "test-reference": 1
+      }
+    },
+    "routes": {
+      "sourceRows": 39,
+      "exportedRows": 38,
+      "excluded": {
+        "test-reference": 1
+      }
+    },
+    "schedule_months": {
+      "sourceRows": 3,
+      "exportedRows": 3,
+      "excluded": {}
+    },
+    "stores": {
+      "sourceRows": 12,
+      "exportedRows": 12,
+      "excluded": {}
+    },
+    "template_routes": {
+      "sourceRows": 0,
+      "exportedRows": 0,
+      "excluded": {}
+    },
+    "template_stops": {
+      "sourceRows": 0,
+      "exportedRows": 0,
+      "excluded": {}
+    },
+    "vehicle_maintenance_policies": {
+      "sourceRows": 5,
+      "exportedRows": 5,
+      "excluded": {}
+    },
+    "vehicle_maintenance_records": {
+      "sourceRows": 8,
+      "exportedRows": 8,
+      "excluded": {}
+    },
+    "vehicle_maintenance_settings": {
+      "sourceRows": 1,
+      "exportedRows": 1,
+      "excluded": {}
+    },
+    "vehicle_replacement_events": {
+      "sourceRows": 0,
+      "exportedRows": 0,
+      "excluded": {}
+    },
+    "vehicles": {
+      "sourceRows": 36,
+      "exportedRows": 35,
+      "excluded": {
+        "test-marker": 1
+      }
+    },
+    "warehouses": {
+      "sourceRows": 6,
+      "exportedRows": 6,
+      "excluded": {}
+    }
+  },
+  "sha256": {
+    "schema.sql": "122330a2d1dd671daea9ce31c1736c1bebf3688ebb90f49b79bfe0853c53d91c",
+    "data.sql": "29b69b5a8a9619372520c4d113f498ceebb738e1ed5c2382beac1aca7c8ce6d9"
+  }
+}

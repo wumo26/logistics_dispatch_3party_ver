@@ -1,0 +1,221 @@
+package com.example.backend.controller;
+
+import com.example.backend.constants.ExceptionStatus;
+import com.example.backend.constants.ExceptionType;
+import com.example.backend.dto.respones.ReportResponses;
+import com.example.backend.service.ReportService;
+import com.example.backend.service.ReportPerformanceService;
+import com.example.backend.dto.respones.ReportPerformanceResponse;
+import com.example.backend.dto.respones.ReportOutcomesResponse;
+import com.example.backend.service.ReportOutcomesService;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
+import java.time.DayOfWeek;
+import java.time.ZoneId;
+import java.time.temporal.TemporalAdjusters;
+import java.util.List;
+import java.util.Set;
+
+/** Supervisor-only, read-only operational reports. */
+@RestController
+@RequestMapping("/api/reports")
+public class ReportController {
+    public enum ReportPeriod { TODAY, YESTERDAY, THIS_WEEK, THIS_MONTH, CUSTOM }
+
+    private static final ZoneId TAIPEI = ZoneId.of("Asia/Taipei");
+    private final ReportService reportService;
+    private final ReportPerformanceService performanceService;
+    private final ReportOutcomesService outcomesService;
+
+    public ReportController(ReportService reportService, ReportPerformanceService performanceService,
+            ReportOutcomesService outcomesService) {
+        this.reportService = reportService;
+        this.performanceService = performanceService;
+        this.outcomesService = outcomesService;
+    }
+
+    @GetMapping("/outcomes")
+    public ReportOutcomesResponse outcomes(
+            @RequestParam(required = false) ReportPeriod period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) List<Long> vehicleIds,
+            @RequestParam(defaultValue = "false") boolean includeDetails) {
+        return outcomesService.outcomesForVehicles(range(period, date, from, to), warehouseId,
+                selectedVehicles(vehicleId, vehicleIds), includeDetails);
+    }
+
+    @GetMapping("/performance")
+    public ReportPerformanceResponse performance(
+            @RequestParam(required = false) ReportPeriod period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) Long driverId,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) List<Long> vehicleIds) {
+        return performanceService.performanceForVehicles(range(period, date, from, to), warehouseId, driverId,
+                selectedVehicles(vehicleId, vehicleIds));
+    }
+
+    @GetMapping("/summary")
+    public ReportResponses.Summary summary(
+            @RequestParam(required = false) ReportPeriod period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) List<Long> vehicleIds
+    ) {
+        return reportService.summaryForVehicles(range(period, date, from, to), warehouseId,
+                selectedVehicles(vehicleId, vehicleIds));
+    }
+
+    @GetMapping("/attendance")
+    public ReportResponses.Attendance attendance(
+            @RequestParam(required = false) ReportPeriod period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long driverId,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) List<Long> vehicleIds
+    ) {
+        return reportService.attendanceForVehicles(range(period, date, from, to), driverId,
+                selectedVehicles(vehicleId, vehicleIds));
+    }
+
+    @GetMapping("/routes")
+    public ReportResponses.Routes routes(
+            @RequestParam(required = false) ReportPeriod period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) Long routeId,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) List<Long> vehicleIds
+    ) {
+        return reportService.routesForVehicles(range(period, date, from, to), warehouseId, routeId,
+                selectedVehicles(vehicleId, vehicleIds));
+    }
+
+    @GetMapping("/drivers")
+    public ReportResponses.Drivers drivers(
+            @RequestParam(required = false) ReportPeriod period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long driverId,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) List<Long> vehicleIds
+    ) {
+        return reportService.driversForVehicles(range(period, date, from, to), driverId,
+                selectedVehicles(vehicleId, vehicleIds));
+    }
+
+    @GetMapping("/vehicles")
+    public ReportResponses.Vehicles vehicles(
+            @RequestParam(required = false) ReportPeriod period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) List<Long> vehicleIds,
+            @RequestParam(defaultValue = "50") double lowLoadThresholdPercent
+    ) {
+        return reportService.vehiclesForVehicles(range(period, date, from, to), warehouseId,
+                selectedVehicles(vehicleId, vehicleIds), lowLoadThresholdPercent);
+    }
+
+    @GetMapping("/warehouses")
+    public ReportResponses.Warehouses warehouses(
+            @RequestParam(required = false) ReportPeriod period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) List<Long> vehicleIds
+    ) {
+        return reportService.warehousesForVehicles(range(period, date, from, to), warehouseId,
+                selectedVehicles(vehicleId, vehicleIds));
+    }
+
+    @GetMapping("/stores")
+    public ReportResponses.Stores stores(
+            @RequestParam(required = false) ReportPeriod period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) Long storeId,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) List<Long> vehicleIds
+    ) {
+        return reportService.storesForVehicles(range(period, date, from, to), warehouseId, storeId,
+                selectedVehicles(vehicleId, vehicleIds));
+    }
+
+    @GetMapping("/exceptions")
+    public ReportResponses.Exceptions exceptions(
+            @RequestParam(required = false) ReportPeriod period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) ExceptionType type,
+            @RequestParam(required = false) ExceptionStatus status,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) Long storeId,
+            @RequestParam(required = false) Long driverId,
+            @RequestParam(required = false) Long routeId,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) List<Long> vehicleIds
+    ) {
+        return reportService.exceptionsForVehicles(range(period, date, from, to), type, status,
+                warehouseId, storeId, driverId, routeId, selectedVehicles(vehicleId, vehicleIds));
+    }
+
+    private Set<Long> selectedVehicles(Long vehicleId, List<Long> vehicleIds) {
+        if (vehicleIds != null) return Set.copyOf(vehicleIds);
+        return vehicleId == null ? null : Set.of(vehicleId);
+    }
+
+    private ReportService.Range range(ReportPeriod period, LocalDate date, LocalDate from, LocalDate to) {
+        if (date != null) {
+            if (period != null || from != null || to != null) {
+                throw new IllegalArgumentException("date 不能與 period 或 from/to 同時使用");
+            }
+            return new ReportService.Range(date, date);
+        }
+        if (from != null || to != null) {
+            if (period != null && period != ReportPeriod.CUSTOM) {
+                throw new IllegalArgumentException("from/to 只能單獨使用或搭配 period=CUSTOM");
+            }
+            return new ReportService.Range(from, to);
+        }
+        if (period == ReportPeriod.CUSTOM) {
+            throw new IllegalArgumentException("period=CUSTOM 必須提供 from 與 to");
+        }
+        LocalDate today = LocalDate.now(TAIPEI);
+        return switch (period == null ? ReportPeriod.TODAY : period) {
+            case TODAY -> new ReportService.Range(today, today);
+            case YESTERDAY -> new ReportService.Range(today.minusDays(1), today.minusDays(1));
+            case THIS_WEEK -> new ReportService.Range(
+                    today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)), today);
+            case THIS_MONTH -> new ReportService.Range(today.withDayOfMonth(1), today);
+            case CUSTOM -> throw new IllegalArgumentException("period=CUSTOM 必須提供 from 與 to");
+        };
+    }
+}

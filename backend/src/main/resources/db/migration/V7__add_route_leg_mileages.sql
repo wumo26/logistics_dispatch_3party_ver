@@ -1,0 +1,36 @@
+-- Per-stop mileage details used by route execution and the manager report preview.
+-- This table was introduced by RouteLegMileagesEntity but was missing from the
+-- original baseline schema, causing /api/reports/routes to fail at runtime.
+CREATE TABLE IF NOT EXISTS route_leg_mileages (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    route_id BIGINT NOT NULL,
+    mileage_log_id BIGINT NOT NULL,
+    driver_id BIGINT NOT NULL,
+    vehicle_id BIGINT NOT NULL,
+    sequence INT NOT NULL,
+    from_type ENUM ('WAREHOUSE', 'STORE') NOT NULL,
+    from_store_id BIGINT NULL,
+    to_type ENUM ('WAREHOUSE', 'STORE') NOT NULL,
+    to_store_id BIGINT NULL,
+    order_id BIGINT NULL,
+    delivery_record_id BIGINT NULL,
+    started_at DATETIME(6) NOT NULL,
+    ended_at DATETIME(6) NOT NULL,
+    system_distance_km DOUBLE NULL,
+    gps_point_count INT NOT NULL,
+    accepted_segment_count INT NOT NULL,
+    calculation_status VARCHAR(50) NOT NULL,
+    created_at DATETIME(6) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_route_leg_mileage_log_sequence UNIQUE (mileage_log_id, sequence),
+    INDEX idx_route_leg_route_sequence (route_id, sequence),
+    INDEX idx_route_leg_driver_time (driver_id, started_at, ended_at),
+    CONSTRAINT fk_route_leg_route FOREIGN KEY (route_id) REFERENCES routes (id),
+    CONSTRAINT fk_route_leg_mileage_log FOREIGN KEY (mileage_log_id) REFERENCES mileage_logs (id),
+    CONSTRAINT fk_route_leg_driver FOREIGN KEY (driver_id) REFERENCES drivers (id),
+    CONSTRAINT fk_route_leg_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles (id),
+    CONSTRAINT fk_route_leg_from_store FOREIGN KEY (from_store_id) REFERENCES stores (id),
+    CONSTRAINT fk_route_leg_to_store FOREIGN KEY (to_store_id) REFERENCES stores (id),
+    CONSTRAINT fk_route_leg_order FOREIGN KEY (order_id) REFERENCES orders (id),
+    CONSTRAINT fk_route_leg_delivery_record FOREIGN KEY (delivery_record_id) REFERENCES delivery_records (id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;

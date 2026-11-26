@@ -1,0 +1,71 @@
+package com.example.backend.entity;
+
+import jakarta.persistence.*;
+
+
+@Table(name = "admin_users")
+@Entity
+public class AdminUsersEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 60)
+    private String account;
+
+    /**
+     * BCrypt 雜湊（60 字元）。長度放寬到 100 以容納帶前綴的編碼器
+     * （DelegatingPasswordEncoder 的 {bcrypt}... 為 68 字元）或 Argon2。
+     */
+    @Column(nullable = false, length = 100)
+    private String password;
+    @Column(nullable = false, length = 60)
+    private String name;
+
+    /**
+     * 允許 null 是為了相容資料庫內已存在、尚未補手機號碼的主管帳號。
+     */
+    @Column(length = 30)
+    private String phone;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getAccount() {
+        return account;
+    }
+
+    public void setAccount(String account) {
+        this.account = account;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+}

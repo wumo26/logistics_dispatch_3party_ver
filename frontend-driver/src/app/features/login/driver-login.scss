@@ -1,0 +1,148 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+}
+
+.login-page {
+  min-height: 100dvh;
+  color: #1e2c29;
+  background: #f2f6f4;
+}
+
+.topbar,
+.login-shell {
+  width: min(100% - 32px, 460px);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.topbar {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  --accent: #0f7665;
+  --brand-muted: #6c7d76;
+  --brand-node: #789089;
+  --brand-text: #213930;
+
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.brand strong {
+  color: #213930;
+  font-size: 15px;
+}
+
+.login-shell {
+  padding-top: clamp(48px, 11dvh, 92px);
+}
+
+.login-copy {
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  margin: 0 0 7px;
+  color: #087663;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+h1,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 10px;
+  color: #15231f;
+  font-size: clamp(28px, 8vw, 34px);
+  line-height: 1.2;
+}
+
+.login-copy > p:last-child {
+  max-width: 320px;
+  margin-bottom: 0;
+  color: #61706a;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+form {
+  display: grid;
+  gap: 9px;
+  padding: 22px;
+  border: 1px solid #d5e1dc;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+label {
+  margin-top: 5px;
+  color: #41524b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+input {
+  min-height: 46px;
+  padding: 0 13px;
+  border: 1px solid #c6d4cf;
+  border-radius: 6px;
+  outline: none;
+  color: #1c2e27;
+  background: #ffffff;
+  font: inherit;
+}
+
+input:focus {
+  border-color: #0f7665;
+  box-shadow: 0 0 0 3px rgb(15 118 101 / 12%);
+}
+
+input::placeholder {
+  color: #8b9993;
+}
+
+button {
+  min-height: 46px;
+  margin-top: 14px;
+  border: 1px solid #087663;
+  border-radius: 6px;
+  color: #ffffff;
+  background: #087663;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+button:hover:not(:disabled) {
+  border-color: #0a8c76;
+  background: #0a8c76;
+}
+
+button:disabled,
+input:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.error-message {
+  margin: 6px 0 0;
+  color: #b53a3a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media (min-width: 760px) {
+  .topbar,
+  .login-shell {
+    width: min(100% - 64px, 460px);
+  }
+}

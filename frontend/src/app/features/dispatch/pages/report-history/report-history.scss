@@ -1,0 +1,89 @@
+// 歷史報表：查詢條件（期間、篩選兩列工具列）→ 匯出預覽（報表分頁＋各報表的 .ui-table）。
+// 面板、分頁、表格都用 styles.scss 的 .ui-*；這裡只放查詢列的版面、預覽裡的摘要數字與附屬列
+:host { display: block; }
+
+// ── 查詢條件 ──
+.period-bar { border-bottom: 1px solid var(--border); }
+.custom-period { color: var(--muted); font-size: 0.875rem; }
+.period-stepper { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.period-stepper strong { font-family: var(--font-mono); font-size: 0.9375rem; font-weight: 600; white-space: nowrap; }
+
+.query-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.query-field { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.875rem; }
+.query-field .ui-input { width: 150px; }
+// 開始、結束日期各一個欄位：Material 的 infix 預設 min-width 180px，欄位窄於這個值時要放掉
+.date-field .admin-date-field { width: 168px; }
+:host ::ng-deep .date-field .mat-mdc-form-field-infix { min-width: 0; width: auto; }
+.preview-button { margin-left: auto; }
+
+// ── 匯出預覽 ──
+.preview-shell h3 {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+  .ui-mono { color: var(--muted); font-size: 0.9375rem; font-weight: 400; }
+}
+
+.sheet-tabs .ui-tab mat-icon { width: 16px; height: 16px; font-size: 16px; }
+.metric-filter { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.875rem; }
+.metric-filter .ui-input { max-width: 240px; }
+.sheet-note { margin: 0; color: var(--muted); font-size: 0.875rem; line-height: 1.6; }
+
+// 載入失敗、尚未預覽時，內容區只放一段說明；失敗時多一顆重新載入
+.empty-preview { display: grid; justify-items: center; gap: 12px; }
+.empty-preview p { margin: 0; }
+
+// 預覽表格：一格一行不換行（欄多時在框裡橫向捲動），第二行灰字放訂單號、門市；說明類的長文字欄才換行
+.sheet-content .ui-table {
+  td { white-space: nowrap; }
+  td small { display: block; margin-top: 2px; color: var(--muted); font-size: 0.75rem; }
+  .wrap-cell { min-width: 200px; white-space: normal; }
+  // 異常案件的「不符商品」摘要一個商品一行
+  td.loading-item-summary { white-space: pre-line; overflow-wrap: anywhere; font-weight: 600; }
+  // 逐項點交：短缺、超收、司機回報不符的列用提醒色，缺少數量加粗
+  tr.has-item-mismatch > td { background: var(--warn-soft); }
+  td.item-missing-quantity { color: var(--warn); font-weight: 700; }
+}
+
+// 附屬列：路線的分段里程、訂單的逐項點交、異常案件的商品點交明細
+.sheet-content .ui-table .sub-row > td { padding: 6px 12px; white-space: normal; background: var(--surface-subtle); }
+
+.item-details {
+  summary { color: var(--accent); font-size: 0.875rem; cursor: pointer; }
+  &[open] summary { margin-bottom: 8px; }
+  .sheet-note { margin-bottom: 8px; }
+}
+
+.route-legs {
+  display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: 0.875rem;
+  strong { color: var(--text); }
+  small { color: var(--subtle); }
+}
+
+// 總覽四格：格線同 .ui-desc
+.metrics-grid {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: 4px;
+  article { min-width: 0; padding: 12px 14px; border-left: 1px solid var(--border); }
+  article:first-child { border-left: 0; }
+  span, small { display: block; color: var(--muted); font-size: 0.875rem; }
+  strong { display: block; margin: 4px 0; font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600; }
+}
+
+// 出勤、出車的摘要數字
+.performance-summary { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 0.9375rem; }
+.performance-summary b { color: var(--accent); font-family: var(--font-mono); font-size: 1.0625rem; }
+
+.planning-details summary { padding: 6px 0; color: var(--muted); font-size: 0.9375rem; cursor: pointer; }
+.planning-details[open] summary { margin-bottom: 8px; }
+.exception-summary { display: flex; flex-wrap: wrap; gap: 6px; }
+
+@media (max-width: 1040px) {
+  .preview-button { margin-left: 0; }
+}
+
+@media (max-width: 760px) {
+  .period-stepper { margin-left: 0; }
+  .query-field, .query-field .ui-input, .date-field .admin-date-field { width: 100%; }
+  .query-field { display: grid; gap: 4px; }
+  .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metrics-grid article:nth-child(odd) { border-left: 0; }
+  .metrics-grid article:nth-child(n + 3) { border-top: 1px solid var(--border); }
+}

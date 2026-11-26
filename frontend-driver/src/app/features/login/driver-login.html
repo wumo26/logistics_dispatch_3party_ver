@@ -1,0 +1,51 @@
+<main class="login-page">
+  <header class="topbar">
+    <div class="brand">
+      <app-brand-logo></app-brand-logo>
+      <strong>司機工作台</strong>
+    </div>
+  </header>
+
+  <section class="login-shell" aria-labelledby="login-title">
+    <div class="login-copy">
+      <p class="eyebrow">司機登入</p>
+      <h1 id="login-title">開始今天的工作</h1>
+      <p>登入後可查看今日出勤狀態與已發布班表。</p>
+    </div>
+
+    <form (submit)="submit($event)" novalidate>
+      <label for="account">帳號</label>
+      <input
+        #accountInput
+        id="account"
+        type="text"
+        autocomplete="username"
+        placeholder="輸入司機帳號"
+        [value]="account()"
+        [disabled]="isSubmitting()"
+        (input)="account.set(accountInput.value)"
+      />
+
+      <label for="password">密碼</label>
+      <input
+        #passwordInput
+        id="password"
+        type="password"
+        autocomplete="current-password"
+        placeholder="輸入密碼"
+        [value]="password()"
+        [disabled]="isSubmitting()"
+        (input)="password.set(passwordInput.value)"
+      />
+
+      <button type="submit" [disabled]="isSubmitting()">
+        {{ isSubmitting() ? (isLocating() ? '正在定位...' : '登入驗證中...') : '登入工作台' }}
+      </button>
+
+      @if (errorMessage()) {
+        <p class="error-message" role="alert">{{ errorMessage() }}</p>
+      }
+    </form>
+
+  </section>
+</main>

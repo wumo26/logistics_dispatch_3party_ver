@@ -1,0 +1,1992 @@
+:host {
+  display: block;
+}
+
+.driver-app {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+  color: #173129;
+  background: #f2f6f4;
+}
+
+.map-surface {
+  // 滿版鋪底：地圖分頁不顯示頂部欄，地圖從螢幕最上緣鋪到最下緣，按鈕、出勤抽屜、底部導覽都疊在它上面
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #f2f6f4;
+}
+
+.driver-map {
+  position: absolute;
+  inset: 0;
+}
+
+:host ::ng-deep .driver-app .maplibregl-ctrl-attrib {
+  padding: 1px 4px;
+  border-radius: 3px 0 0;
+  color: rgb(42 76 65 / 78%);
+  background: rgb(255 255 255 / 70%);
+  font-size: 9px;
+}
+
+:host ::ng-deep .driver-app .maplibregl-ctrl-attrib a {
+  color: inherit;
+}
+
+.map-surface.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.app-topbar,
+.map-content,
+.content-panel,
+.bottom-navigation {
+  position: relative;
+  z-index: 500;
+  width: min(100% - 28px, 480px);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.app-topbar {
+  display: flex;
+  z-index: 1000;
+  width: 100%;
+  min-height: 60px;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(8px, env(safe-area-inset-top)) 14px 8px;
+  border-bottom: 1px solid rgb(125 210 187 / 25%);
+  background: #0b1d1c;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.brand {
+  --accent: #7de1c5;
+  --brand-muted: #c7d7d1;
+  --brand-node: #a5b8b0;
+  --brand-text: #f1f8f4;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand strong {
+  color: #f1f8f4;
+  font-size: 14px;
+}
+
+.icon-button,
+.locate-control,
+.chat-control {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgb(182 218 207 / 38%);
+  border-radius: 7px;
+  color: #dff4ec;
+  background: rgb(8 25 25 / 88%);
+  cursor: pointer;
+}
+
+.icon-button mat-icon,
+.locate-control mat-icon,
+.chat-control mat-icon,
+.gps-status mat-icon,
+.primary-action mat-icon,
+.outline-action mat-icon,
+.danger-action mat-icon,
+.bottom-navigation mat-icon,
+.empty-state mat-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.weather-indicator {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 58px;
+  height: 40px;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.weather-indicator mat-icon {
+  display: block;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  overflow: hidden;
+  font-size: 20px;
+  line-height: 20px;
+}
+
+.weather-indicator small {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.map-content {
+  // 地圖分頁沒有頂部欄，內容層吃滿整個畫面高度
+  min-height: 100dvh;
+}
+
+// 地圖控制項避開瀏海與底部：指北針在左上，要讓出狀態列；
+// 版權標示在右下，要抬到收合的出勤抽屜（bottom 86px + 64px 高）上面，不然會被蓋住
+:host ::ng-deep .driver-app .maplibregl-ctrl-top-left {
+  top: env(safe-area-inset-top);
+}
+
+:host ::ng-deep .driver-app .maplibregl-ctrl-bottom-right {
+  bottom: calc(156px + env(safe-area-inset-bottom));
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+  color: #68ceb7;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  max-width: 246px;
+  margin-bottom: 0;
+  color: #f3f9f6;
+  font-size: 29px;
+  line-height: 1.22;
+}
+
+h2 {
+  margin-bottom: 0;
+  color: #f3f9f6;
+  font-size: 21px;
+}
+
+.map-quick-actions {
+  position: absolute;
+  // 沒有頂部欄後直接貼著螢幕上緣，要讓出瀏海／狀態列
+  top: calc(14px + env(safe-area-inset-top));
+  right: 0;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.locate-control,
+.chat-control {
+  // 必須是 relative，不能是 static：Material 按鈕裡的波紋、焦點框、觸控區是 absolute，會貼滿「最近有定位的祖先」。
+  // static 時它們會往上貼滿整個 .map-quick-actions，排在後面的定位鈕就蓋住聊天鈕，點聊天其實點到定位
+  position: relative;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  place-content: center;
+}
+
+// 未讀紅點用 MatBadge。司機端沒有套 mat.theme()，badge 預設吃的 --mat-sys-error 等系統色都是空的，
+// 不給 token 會變成透明底，只看得到數字
+.chat-control {
+  --mat-badge-background-color: #e5484d;
+  --mat-badge-text-color: #fff;
+  --mat-badge-small-size-text-size: 10px;
+}
+
+.map-quick-actions .locate-control mat-icon,
+.map-quick-actions .chat-control mat-icon {
+  width: 22px;
+  height: 22px;
+  overflow: visible;
+  font-size: 22px;
+  line-height: 22px;
+}
+
+
+.attendance-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 86px;
+  left: 0;
+  display: grid;
+  height: min(68dvh, 520px);
+  grid-template-rows: 64px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgb(125 210 187 / 35%);
+  border-radius: 8px;
+  background: rgb(11 29 29 / 94%);
+  transform: translateY(calc(100% - 64px + var(--attendance-sheet-drag, 0px)));
+  transition: transform 220ms ease;
+  will-change: transform;
+}
+
+.attendance-sheet.is-expanded {
+  transform: translateY(var(--attendance-sheet-drag, 0px));
+}
+
+.attendance-sheet.is-navigation-active {
+  height: min(46dvh, 360px);
+}
+
+.attendance-sheet.is-dragging {
+  transition: none;
+}
+
+/* 收合時只保留摘要列，避免內容透過底部導覽列顯示或被誤觸。 */
+.attendance-sheet:not(.is-expanded) .attendance-drawer-content {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.attendance-drawer-handle {
+  display: grid;
+  width: 100%;
+  min-height: 64px;
+  grid-template-columns: 24px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 1px solid rgb(125 210 187 / 20%);
+  color: #dff4ec;
+  background: rgb(8 25 25 / 50%);
+  cursor: grab;
+  font: inherit;
+  text-align: left;
+  touch-action: none;
+}
+
+.attendance-drawer-handle:active {
+  cursor: grabbing;
+}
+
+.attendance-drawer-handle > mat-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.attendance-drawer-grip {
+  justify-self: center;
+  width: 20px;
+  height: 4px;
+  border-radius: 999px;
+  background: #72c9b3;
+}
+
+.attendance-drawer-summary {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.attendance-drawer-summary small {
+  overflow: hidden;
+  color: #8eb7ab;
+  font-size: 10px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attendance-drawer-summary strong {
+  overflow: hidden;
+  color: #f3f9f6;
+  font-size: 15px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attendance-drawer-content {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.route-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 0;
+  border-block: 1px solid rgb(125 210 187 / 25%);
+}
+
+.route-stop {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+
+.route-stop > span:last-child {
+  min-width: 0;
+}
+
+.route-stop strong,
+.route-stop small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.route-stop strong {
+  font-size: 12px;
+}
+
+.route-stop small {
+  font-size: 11px;
+  opacity: 0.65;
+}
+
+.route-stop.is-pending {
+  opacity: 0.6;
+}
+
+.route-marker {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid currentcolor;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.route-marker.is-current {
+  border-color: #b7f1df;
+  color: #08231f;
+  background: #70d5ba;
+}
+
+.route-connector {
+  display: block;
+  flex: 0 0 22px;
+  height: 1px;
+  background: #70d5ba;
+}
+
+.destination-copy {
+  margin: 11px 0 0;
+  color: #b0c1bb;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.navigation-action {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 0 13px;
+  border-radius: 6px;
+  border: 0;
+  color: #08231f;
+  background: #70d5ba;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.navigation-action mat-icon,
+.task-navigation-button mat-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.navigation-route-detail {
+  margin: 8px 0 0;
+  color: #a7d8ca;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.navigation-route-detail.is-error {
+  color: #efb8b3;
+}
+
+.sheet-heading,
+.attendance-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gps-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #a2b8b0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gps-status.is-active {
+  color: #77d7be;
+}
+
+.sheet-copy {
+  margin: 13px 0 0;
+  color: #b0c1bb;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.attendance-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.attendance-meta span {
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+  gap: 2px;
+  padding: 7px 9px;
+  border-radius: 4px;
+  color: #b9d5cc;
+  background: #183938;
+  text-align: center;
+}
+
+.attendance-meta small {
+  color: #8eb7ab;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.attendance-meta strong {
+  overflow-wrap: anywhere;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.attendance-meta-status {
+  grid-column: 1 / -1;
+}
+
+.primary-action,
+.outline-action,
+.danger-action,
+.sign-out {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.primary-action {
+  width: 100%;
+  margin-top: 14px;
+  color: #08231f;
+  background: #70d5ba;
+}
+
+.outline-action {
+  margin-top: 14px;
+  border-color: #3f6259;
+  color: #d9eee7;
+  background: transparent;
+}
+
+.attendance-actions .outline-action,
+.attendance-actions .danger-action {
+  flex: 1;
+}
+
+.danger-action {
+  margin-top: 14px;
+  color: #ffffff;
+  background: #a44646;
+}
+
+.break-status {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 11px 12px;
+  border: 1px solid #6d663e;
+  border-radius: 6px;
+  color: #d9d09a;
+  background: #373321;
+  font-size: 13px;
+}
+
+.break-status strong {
+  color: #fff4ba;
+  font-size: 24px;
+}
+
+.content-panel {
+  min-height: calc(100dvh - 60px - env(safe-area-inset-top));
+  padding: 22px 0 calc(96px + env(safe-area-inset-bottom));
+}
+
+.panel-heading {
+  margin-bottom: 18px;
+}
+
+.task-date-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.task-date-picker {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.task-date-picker button {
+  display: grid;
+  width: 34px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #c8dad3;
+  border-radius: 7px;
+  color: #176c5b;
+  background: #fff;
+  cursor: pointer;
+}
+
+.task-date-picker button mat-icon {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+}
+
+.task-date-input,
+.task-departure-warehouse {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-date-input span,
+.task-departure-warehouse span {
+  color: #526f66;
+  font-size: 12px;
+}
+
+.task-date-input input {
+  width: 130px;
+  height: 36px;
+  padding: 0 5px;
+  border: 1px solid #c8dad3;
+  border-radius: 7px;
+  color: #173129;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+}
+
+.task-departure-warehouse {
+  max-width: 42%;
+  text-align: right;
+}
+
+.task-departure-warehouse strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.task-route-list {
+  display: grid;
+  gap: 12px;
+}
+
+.task-route-card {
+  border: 1px solid #2e4a45;
+  border-radius: 8px;
+  background: #142322;
+}
+
+.task-route-card {
+  overflow: hidden;
+}
+
+.task-route-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 16px 8px;
+}
+
+.task-route-heading p,
+.task-route-meta {
+  margin: 0;
+  color: #8ea69e;
+  font-size: 12px;
+}
+
+.task-route-heading h2 {
+  margin-top: 4px;
+  font-size: 17px;
+}
+
+.task-route-heading > span,
+.shift-type {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 5px 7px;
+  border-radius: 4px;
+  color: #b9d5cc;
+  background: #183938;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.task-route-meta {
+  padding: 0 16px 13px;
+}
+
+.task-route-heading small {
+  display: block;
+  margin-top: 4px;
+  color: #8ea69e;
+  font-size: 12px;
+}
+
+.future-task-card {
+  border-color: #3a5f56;
+}
+
+.future-task-stop {
+  grid-template-columns: 28px minmax(0, 1fr);
+}
+
+.task-stop-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid #2e4a45;
+}
+
+.task-stop {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+}
+
+.task-stop + .task-stop {
+  border-top: 1px solid #2e4a45;
+}
+
+.task-stop.is-selected {
+  background: rgb(33 97 82 / 48%);
+}
+
+.stop-sequence {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid #5d9586;
+  border-radius: 50%;
+  color: #94dcc8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.task-stop-copy {
+  min-width: 0;
+}
+
+.task-stop-copy strong,
+.task-stop-copy small,
+.task-stop-copy span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-stop-copy strong {
+  color: #edf6f1;
+  font-size: 13px;
+}
+
+.task-stop-copy small,
+.task-stop-copy span {
+  margin-top: 3px;
+  color: #8ea69e;
+  font-size: 11px;
+}
+
+.task-navigation-button {
+  display: grid;
+  min-width: 46px;
+  min-height: 42px;
+  padding: 4px;
+  place-items: center;
+  border: 1px solid #416b61;
+  border-radius: 6px;
+  color: #9de0ce;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.task-stop-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.task-loading-button,
+.task-arrive-button,
+.task-delivery-button {
+  display: grid;
+  min-width: 46px;
+  min-height: 42px;
+  padding: 4px;
+  place-items: center;
+  border: 1px solid #416b61;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+// 點交與抵達都是該站當下的主要動作，用同一種強調樣式
+.task-loading-button,
+.task-arrive-button {
+  border-color: #4b8f80;
+  color: #d6f4e8;
+  background: #1a5b4f;
+}
+
+.task-delivery-button {
+  color: #a9e4d2;
+  background: #163b35;
+}
+
+.task-status {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 6px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  color: #b9d5cc;
+  background: #183938;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.task-status.is-in_delivery {
+  color: #f3d799;
+  background: #4b3920;
+}
+
+.task-status.is-completed {
+  color: #9de0ce;
+  background: #183938;
+}
+
+.task-status.is-failed,
+.task-status.is-cancelled {
+  color: #f3bcaf;
+  background: #4a2a2d;
+}
+
+.task-feedback {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #3b6258;
+  border-radius: 6px;
+  color: #bdd8cf;
+  background: #142d29;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.task-feedback.is-success {
+  border-color: #3a806e;
+  color: #a7ead6;
+}
+
+.task-feedback.is-error {
+  border-color: #814f50;
+  color: #f4b9b4;
+  background: #352123;
+}
+
+.delivery-action-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 2px;
+  padding: 12px;
+  border: 1px solid #38685d;
+  border-radius: 6px;
+  background: #102b27;
+}
+
+.task-stop .delivery-action-panel {
+  grid-column: 2 / -1;
+}
+
+.delivery-action-panel p,
+.delivery-action-panel small {
+  margin: 0;
+  color: #9eb8af;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.delivery-action-panel label,
+.mileage-form-row label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.delivery-action-panel label > span,
+.delivery-action-panel > span,
+.mileage-form-row label > span {
+  color: #b9d5cc;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.delivery-action-panel input,
+.delivery-action-panel textarea,
+.mileage-form-row input {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #3d655b;
+  border-radius: 5px;
+  outline: none;
+  color: #edf6f1;
+  background: #0b1d1c;
+  font: inherit;
+  font-size: 12px;
+}
+
+.delivery-action-panel textarea {
+  resize: vertical;
+}
+
+.loading-item-list {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgb(120 207 185 / 28%);
+  border-radius: 6px;
+  background: rgb(7 29 27 / 42%);
+}
+
+.loading-item-list > header,
+.loading-item-list article {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.loading-item-list > header {
+  justify-content: space-between;
+}
+
+.loading-item-list > header strong {
+  color: #d6f4e8;
+  font-size: 12px;
+}
+
+.loading-item-list > header span {
+  color: #9eb8af;
+  font-size: 10px;
+}
+
+.loading-item-list article {
+  align-items: end;
+  padding-top: 8px;
+  border-top: 1px solid rgb(158 184 175 / 18%);
+}
+
+.loading-item-list article > label {
+  flex: 0 0 88px;
+}
+
+.loading-item-list article > .loading-item-check {
+  display: flex;
+  flex: 1 1 120px;
+  align-items: center;
+  gap: 8px;
+}
+
+.delivery-action-panel .loading-item-check input {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0;
+  accent-color: #70d5ba;
+}
+
+.loading-item-check span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.loading-item-check strong,
+.loading-item-check small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loading-item-check strong {
+  color: #edf6f1;
+  font-size: 12px;
+}
+
+.loading-item-check small {
+  color: #9eb8af;
+  font-size: 10px;
+}
+
+.loading-item-list article > .loading-item-note {
+  flex-basis: 120px;
+}
+
+.delivery-action-panel input:focus,
+.delivery-action-panel textarea:focus,
+.mileage-form-row input:focus {
+  border-color: #78cfb9;
+}
+
+.delivery-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.delivery-photo-input small,
+.delivery-exception-detail small {
+  color: #9eb8af;
+  font-size: 11px;
+}
+
+.delivery-exception-detail {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid rgb(158 184 175 / 24%);
+}
+
+.delivery-complete-button,
+.delivery-exception-button,
+.delivery-cancel-button,
+.mileage-start-button,
+.mileage-end-button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.delivery-complete-button,
+.mileage-start-button {
+  color: #08231f;
+  background: #70d5ba;
+}
+
+.delivery-exception-button,
+.mileage-end-button {
+  border-color: #976565;
+  color: #f2c1bb;
+  background: #3e282a;
+}
+
+.delivery-cancel-button {
+  border-color: #42645b;
+  color: #b9d5cc;
+  background: transparent;
+}
+
+.delivery-complete-button mat-icon,
+.delivery-exception-button mat-icon,
+.mileage-start-button mat-icon,
+.mileage-end-button mat-icon,
+.mileage-heading mat-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.mileage-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 15px;
+  border: 1px solid #2e4a45;
+  border-radius: 8px;
+  background: #142322;
+}
+
+.mileage-panel--drawer {
+  margin-top: 16px;
+  padding: 12px;
+}
+
+.mileage-panel--drawer .mileage-heading h2 {
+  font-size: 16px;
+}
+
+.mileage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mileage-heading h2 {
+  font-size: 18px;
+}
+
+.mileage-heading mat-icon {
+  color: #82dfc7;
+}
+
+.mileage-panel > p {
+  margin: -4px 0 0;
+  color: #9eb8af;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.emergency-leave-history {
+  display: grid;
+  gap: 8px;
+}
+
+.emergency-leave-history article {
+  padding-top: 8px;
+  border-top: 1px solid #30443d;
+}
+
+.emergency-leave-history strong,
+.emergency-leave-history small,
+.emergency-leave-history span {
+  display: block;
+  line-height: 1.45;
+}
+
+.emergency-leave-history strong {
+  color: #d9eee7;
+  font-size: 12px;
+}
+
+.emergency-leave-history small,
+.emergency-leave-history span {
+  color: #a9bdb5;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+
+.mileage-form-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.mileage-start-button,
+.mileage-end-button {
+  min-width: 58px;
+}
+
+.mileage-note {
+  color: #9eb8af;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.mileage-recalculate-button {
+  justify-self: start;
+  min-height: 36px;
+  margin-top: 2px;
+}
+
+
+.empty-state,
+.profile-list,
+.shift-list {
+  border: 1px solid #2e4a45;
+  border-radius: 8px;
+  background: #142322;
+}
+
+.empty-state {
+  display: grid;
+  min-height: 220px;
+  padding: 28px;
+  place-content: center;
+  justify-items: center;
+  color: #83d6c0;
+  text-align: center;
+}
+
+.empty-state h2 {
+  margin: 13px 0 8px;
+  font-size: 18px;
+}
+
+.empty-state p {
+  max-width: 260px;
+  margin-bottom: 0;
+  color: #a7bcb5;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.profile-photo-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid #2e4a45;
+  border-radius: 8px;
+  background: #142322;
+}
+
+.profile-photo-preview {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 2px solid #65d6c2;
+  border-radius: 50%;
+  color: #0f2522;
+  background: #65d6c2;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.profile-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-photo-copy {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+}
+
+.profile-photo-copy strong {
+  color: #edf7f3;
+  font-size: 18px;
+}
+
+.profile-photo-copy small {
+  color: #8ea69e;
+  line-height: 1.5;
+}
+
+.profile-photo-action {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid #65d6c2;
+  border-radius: 7px;
+  color: #65d6c2;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.profile-photo-action input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.profile-photo-action.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.profile-photo-feedback {
+  margin: 0 0 14px;
+  font-size: 13px;
+}
+
+.profile-photo-feedback.is-success {
+  color: #65d6c2;
+}
+
+.profile-photo-feedback.is-error {
+  color: #ff8d8d;
+}
+
+.profile-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+}
+
+.profile-list div {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  padding: 13px;
+  background: #142322;
+}
+
+.profile-list div + div {
+  border-top: 0;
+}
+
+.profile-list div:last-child {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.profile-list dd {
+  overflow-wrap: anywhere;
+}
+
+dt {
+  color: #8ea69e;
+  font-size: 13px;
+}
+
+dd {
+  margin: 0;
+  color: #edf6f1;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.shift-list {
+  overflow: hidden;
+}
+
+.shift-row {
+  display: grid;
+  grid-template-columns: 0.85fr auto minmax(0, 1.25fr);
+  align-items: start;
+  gap: 8px;
+  padding: 15px 16px;
+  color: #a9bdb6;
+  font-size: 13px;
+}
+
+.shift-row + .shift-row {
+  border-top: 1px solid #2e4a45;
+}
+
+.shift-row strong {
+  color: #edf6f1;
+}
+
+.shift-type.is-work {
+  color: #9de0ce;
+  background: #183938;
+}
+
+.shift-type.is-day_off,
+.shift-type.is-leave {
+  color: #d0d9d5;
+  background: #31403c;
+}
+
+.shift-details {
+  display: grid;
+  gap: 3px;
+  color: #a9bdb6;
+}
+
+.shift-details small {
+  color: #849e94;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.sign-out {
+  width: 100%;
+  margin-top: 18px;
+  border-color: #405e57;
+  color: #d6e5df;
+  background: transparent;
+}
+
+.bottom-navigation {
+  position: fixed;
+  z-index: 700;
+  right: 0;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 7px;
+  border: 1px solid rgb(120 185 167 / 34%);
+  border-radius: 8px;
+  background: #091819;
+  box-shadow: 0 10px 26px rgb(0 0 0 / 30%);
+}
+
+.bottom-navigation button {
+  display: grid;
+  grid-template-rows: 22px 14px;
+  align-content: center;
+  row-gap: 2px;
+  min-height: 50px;
+  padding: 4px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  color: #93aaa2;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.bottom-navigation mat-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  overflow: visible;
+  font-size: 22px;
+  line-height: 22px;
+}
+
+.bottom-navigation span {
+  display: block;
+  line-height: 14px;
+}
+
+.bottom-navigation button.is-active {
+  color: #e8f8f2;
+  background: #155247;
+}
+
+.leave-tab-count {
+  display: inline-grid !important;
+  min-width: 16px;
+  height: 16px;
+  place-items: center;
+  margin-left: 3px;
+  padding: 0 4px;
+  border-radius: 8px;
+  color: #173129;
+  background: #f0c779;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.bottom-navigation button.is-active mat-icon {
+  color: #82e0c8;
+}
+
+.driver-app .app-topbar,
+.driver-app .map-content,
+.driver-app .content-panel {
+  color: #173129;
+}
+
+.driver-app .brand {
+  --accent: #0e7663;
+  --brand-muted: #526f66;
+  --brand-node: #78928a;
+  --brand-text: #1f382f;
+}
+
+.driver-app .app-topbar {
+  border-color: #c8dad3;
+  background: #f9fdfb;
+}
+
+.driver-app .brand strong,
+.driver-app h1,
+.driver-app h2,
+.driver-app dd,
+.driver-app .bottom-navigation button.is-active {
+  color: #173129;
+}
+
+.driver-app .icon-button,
+.driver-app .locate-control,
+.driver-app .chat-control,
+.driver-app .attendance-sheet,
+.driver-app .empty-state,
+.driver-app .profile-list,
+.driver-app .shift-list,
+.driver-app .task-route-card,
+.driver-app .mileage-panel,
+.driver-app .bottom-navigation {
+  border-color: #c8dad3;
+  background: #f9fdfb;
+}
+
+.driver-app .icon-button,
+.driver-app .locate-control,
+.driver-app .chat-control {
+  color: #174c40;
+}
+
+
+.driver-app .attendance-drawer-handle {
+  border-color: #c8dad3;
+  color: #174c40;
+  background: #edf5f1;
+}
+
+.driver-app .attendance-drawer-grip {
+  background: #0e7663;
+}
+
+.driver-app .attendance-drawer-summary small {
+  color: #5a8b7f;
+}
+
+.driver-app .attendance-drawer-summary strong {
+  color: #173129;
+}
+
+.driver-app .gps-status,
+.driver-app .sheet-copy,
+.driver-app .destination-copy,
+.driver-app .empty-state p,
+.driver-app dt,
+.driver-app .shift-row,
+.driver-app .task-route-heading p,
+.driver-app .task-route-meta,
+.driver-app .task-stop-copy small,
+.driver-app .task-stop-copy span,
+.driver-app .shift-details,
+.driver-app .delivery-action-panel p,
+.driver-app .delivery-action-panel small,
+.driver-app .mileage-panel > p,
+.driver-app .emergency-leave-history small,
+.driver-app .emergency-leave-history span,
+.driver-app .mileage-note {
+  color: #617b72;
+}
+
+.driver-app .bottom-navigation button.is-active mat-icon {
+  color: #087663;
+}
+
+.driver-app .attendance-meta span {
+  color: #286456;
+  background: #e5f2ec;
+}
+
+.driver-app .attendance-meta small {
+  color: #5a8b7f;
+}
+
+.driver-app .shift-row strong {
+  color: #1d392f;
+}
+
+.driver-app .task-route-heading h2,
+.driver-app .task-stop-copy strong {
+  color: #1d392f;
+}
+
+.driver-app .profile-list div + div,
+.driver-app .shift-row + .shift-row,
+.driver-app .task-stop-list,
+.driver-app .task-stop + .task-stop {
+  border-color: #deebe5;
+}
+
+.driver-app .profile-photo-card {
+  border-color: #deebe5;
+  background: #ffffff;
+}
+
+.driver-app .profile-list {
+  background: #deebe5;
+}
+
+.driver-app .profile-list div {
+  background: #ffffff;
+}
+
+.driver-app .profile-photo-copy strong {
+  color: #1d392f;
+}
+
+.driver-app .profile-photo-copy small {
+  color: #5d736b;
+}
+
+.driver-app .profile-photo-action {
+  border-color: #74aa9b;
+  color: #176c5b;
+  background: #f7fcfa;
+}
+
+.driver-app .outline-action {
+  border-color: #91b8ad;
+  color: #205b4d;
+  background: #ffffff;
+}
+
+.driver-app .sign-out {
+  border-color: #d7aaa5;
+  color: #8a4540;
+  background: #fff7f5;
+}
+
+.driver-app .bottom-navigation button {
+  color: #70877f;
+}
+
+.driver-app .bottom-navigation button.is-active {
+  background: #cceee2;
+}
+
+.driver-app .task-stop.is-selected {
+  background: #dff4eb;
+}
+
+.driver-app .task-route-heading > span,
+.driver-app .shift-type.is-work {
+  color: #246a59;
+  background: #e5f2ec;
+}
+
+.driver-app .shift-type.is-day_off {
+  color: #805e12;
+  background: #fff3c4;
+}
+
+// 請假跟休假分開：月曆格子、圖例、明細標籤都用同一組橘色，一眼分得出是臨時請假
+.driver-app .shift-type.is-leave {
+  color: #9a5a17;
+  background: #fbeedd;
+}
+
+.driver-app .stop-sequence,
+.driver-app .task-navigation-button,
+.driver-app .task-delivery-button {
+  color: #226c5a;
+}
+
+.driver-app .task-loading-button,
+.driver-app .task-arrive-button {
+  border-color: #70aa9c;
+  color: #174c40;
+  background: #cceee2;
+}
+
+.driver-app .task-status {
+  color: #46655b;
+  background: #e7f1ed;
+}
+
+.driver-app .task-status.is-in_delivery {
+  color: #795e22;
+  background: #f6edcf;
+}
+
+.driver-app .task-status.is-failed,
+.driver-app .task-status.is-cancelled {
+  color: #8a4a4a;
+  background: #f8e6e3;
+}
+
+.driver-app .delivery-action-panel {
+  border-color: #c4ddd4;
+  background: #edf8f3;
+}
+
+.driver-app .delivery-action-panel label > span,
+.driver-app .mileage-form-row label > span {
+  color: #42635a;
+}
+
+.driver-app .delivery-photo-input small,
+.driver-app .delivery-exception-detail small {
+  color: #617b72;
+}
+
+.driver-app .delivery-action-panel input,
+.driver-app .delivery-action-panel textarea,
+.driver-app .mileage-form-row input {
+  border-color: #c7dbd3;
+  color: #1b392f;
+  background: #ffffff;
+}
+
+.driver-app .loading-item-list {
+  border-color: #cde2da;
+  background: #f7fcfa;
+}
+
+.driver-app .loading-item-list > header strong,
+.driver-app .loading-item-check strong {
+  color: #1d392f;
+}
+
+.driver-app .loading-item-list > header span,
+.driver-app .loading-item-check small {
+  color: #617b72;
+}
+
+.driver-app .loading-item-list article {
+  border-color: #dceae5;
+}
+
+.driver-app .delivery-cancel-button {
+  border-color: #bfd5cc;
+  color: #42635a;
+}
+
+.driver-app .delivery-exception-button,
+.driver-app .mileage-end-button {
+  border-color: #d6a4a0;
+  color: #854a49;
+  background: #f9e7e4;
+}
+
+.driver-app .navigation-route-detail {
+  color: #477065;
+}
+
+.driver-app .navigation-route-detail.is-error {
+  color: #984a4a;
+}
+
+.driver-app .emergency-leave-history article {
+  border-color: #e1e8df;
+}
+
+.driver-app .task-feedback {
+  border-color: #c6ddd5;
+  color: #45665b;
+  background: #eff9f4;
+}
+
+.driver-app .task-feedback.is-error {
+  border-color: #e0b1ad;
+  color: #8a4a4a;
+  background: #fbedeb;
+}
+
+@media (max-width: 520px) {
+  .loading-item-list article {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 92px;
+  }
+
+  .loading-item-list article > .loading-item-check,
+  .loading-item-list article > .loading-item-note {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 380px) {
+  .delivery-action-buttons {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .delivery-cancel-button {
+    grid-column: 1 / -1;
+  }
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+// ── 聊天 Bottom Sheet 的內容 ──────────────────────────────
+// 外框（背景、圓角）在 styles.scss：sheet 掛在 body 底下的 overlay，元件樣式碰不到外框；
+// 裡面的內容來自這個元件的 <ng-template>，所以寫在這裡照樣吃得到
+.driver-chat-sheet {
+  display: grid;
+  // 撐滿全螢幕的 sheet：標題固定在上面，第二列的對話列表吃掉剩下的高度
+  height: 100%;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  gap: 12px;
+  padding: 4px 0 calc(12px + env(safe-area-inset-bottom));
+}
+
+.driver-chat-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.driver-chat-sheet__header h2 {
+  margin: 0;
+  color: #173129;
+  font-size: 17px;
+}
+
+.driver-chat-sheet__eyebrow {
+  margin: 0 0 2px;
+  color: #087c6b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.driver-chat-thread {
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 4px 2px 20px;
+}
+
+.driver-chat-message {
+  width: fit-content;
+  max-width: min(82%, 440px);
+  padding: 10px 12px 8px;
+  border: 1px solid #c8dad3;
+  border-radius: 8px 8px 8px 2px;
+  color: #173129;
+  background: #f2f7f5;
+}
+
+.driver-chat-message.is-own {
+  justify-self: end;
+  border-color: #0d8a73;
+  border-radius: 8px 8px 2px;
+  color: #ffffff;
+  background: #087c6b;
+}
+
+.driver-chat-message p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.driver-chat-message small {
+  display: block;
+  margin-top: 5px;
+  color: #6d827a;
+  font-size: 11px;
+  text-align: right;
+}
+
+.driver-chat-message.is-own small {
+  color: rgb(255 255 255 / 78%);
+}
+
+.driver-chat-sheet__placeholder {
+  margin: 0;
+  color: #31584d;
+  font-size: 14px;
+}
+
+.driver-chat-sheet__placeholder.is-error {
+  color: #a14c2e;
+}
+
+// 版面跟後台 .chat-composer 一樣：輸入框吃滿、送出鈕靠右。
+// 送出失敗的錯誤、輸入框會落在 .driver-chat-sheet 自動多出來的列（高度 auto），對話列表仍吃掉剩下的高度
+.driver-chat-composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  // 司機端沒有套 mat.theme()，form-field 預設吃的 --mat-sys-* 都是空的，
+  // 外框會退回文字色、聚焦時也不會變色；這裡補上，顏色沿用聊天泡泡的綠
+  --mat-form-field-outlined-outline-color: #b9d3ca;
+  --mat-form-field-outlined-hover-outline-color: #6d827a;
+  --mat-form-field-outlined-focus-outline-color: #087c6b;
+  --mat-form-field-outlined-caret-color: #087c6b;
+  --mat-form-field-outlined-input-text-color: #173129;
+  --mat-form-field-outlined-input-text-placeholder-color: #6d827a;
+  --mat-form-field-outlined-container-shape: 12px;
+  --mat-icon-button-icon-color: #087c6b;
+  --mat-icon-button-disabled-icon-color: #b9d3ca;
+}
+
+.driver-chat-composer__field {
+  flex: 1;
+}
+
+.driver-chat-empty {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 44px 18px;
+  color: #527067;
+  text-align: center;
+}
+
+.driver-chat-empty mat-icon {
+  width: 28px;
+  height: 28px;
+  color: #087c6b;
+  font-size: 28px;
+}
+
+.driver-chat-empty strong {
+  color: #173129;
+  font-size: 15px;
+}
+
+.driver-chat-empty span {
+  font-size: 13px;
+}
+
+// ── 班表月曆（Material mat-calendar）─────────────────────
+// 司機端沒有套 mat.theme()，月曆的系統色都是空的，這裡用工作台淺色面板的配色補上 token。
+// 每一格依班別上色的 class（shift-work 等）在 styles.scss：格子在 MatCalendar 自己的元件裡，這裡的樣式碰不到
+.schedule-calendar-card {
+  margin-bottom: 14px;
+  padding: 6px 6px 12px;
+  border: 1px solid #c8dad3;
+  border-radius: 8px;
+  background: #f9fdfb;
+}
+
+.driver-schedule-calendar {
+  --mat-datepicker-calendar-text-font: inherit;
+  --mat-datepicker-calendar-container-text-color: #1d392f;
+  --mat-datepicker-calendar-header-text-color: #516860;
+  --mat-datepicker-calendar-header-divider-color: #c8dad3;
+  --mat-datepicker-calendar-body-label-text-color: #516860;
+  --mat-datepicker-calendar-period-button-text-color: #1d392f;
+  --mat-datepicker-calendar-period-button-icon-color: #516860;
+  --mat-datepicker-calendar-navigation-button-icon-color: #087c6b;
+  --mat-datepicker-calendar-date-text-color: #1d392f;
+  --mat-datepicker-calendar-date-today-outline-color: #087c6b;
+  --mat-datepicker-calendar-date-selected-state-background-color: #087c6b;
+  --mat-datepicker-calendar-date-selected-state-text-color: #fff;
+  --mat-datepicker-calendar-date-hover-state-background-color: rgb(8 124 107 / 10%);
+  --mat-datepicker-calendar-date-focus-state-background-color: rgb(8 124 107 / 16%);
+}
+
+.schedule-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.driver-app .shift-type.is-pending {
+  color: #73510c;
+  background: #fff1c8;
+}
+
+.schedule-pending-hint {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  margin: 10px 6px 0;
+  color: #73510c;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.schedule-pending-hint mat-icon {
+  flex: 0 0 16px;
+  height: 16px;
+  width: 16px;
+  margin-top: 2px;
+  font-size: 16px;
+}
+
+.schedule-state {
+  margin: 0;
+  padding: 16px;
+  color: #516860;
+  font-size: 13px;
+  text-align: center;
+}
+
+.schedule-state.is-error {
+  color: #a14c2e;
+}
