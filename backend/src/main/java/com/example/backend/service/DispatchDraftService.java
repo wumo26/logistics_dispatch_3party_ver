@@ -10,7 +10,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /** 處理拖曳面板全部清空時的草稿刪除，不讓已執行訂單被解綁。 */
 @Service
@@ -40,7 +43,7 @@ public class DispatchDraftService {
 
         List<OrdersEntity> orders = ordersDAO.findByRouteIdIn(routeIds);
         List<String> delivering = orders.stream()
-                .filter(order -> order.getStatus() == OrderStatus.IN_DELIVERY)
+                .filter(order -> order.getStatus().isInDriverCustody())
                 .map(OrdersEntity::getOrderNumber)
                 .toList();
         if (!delivering.isEmpty()) {
@@ -56,11 +59,11 @@ public class DispatchDraftService {
         }
         ordersDAO.saveAll(orders);
         ordersDAO.flush();
-        List<Long> retainedRouteIds = orders.stream()
+        Set<Long> retainedRouteIds = orders.stream()
                 .filter(order -> order.getStatus() != OrderStatus.CONFIRMED)
                 .map(OrdersEntity::getRouteId)
-                .distinct()
-                .toList();
+                .collect(Collectors.toCollection(HashSet::new));
+        retainedRouteIds.addAll(routesDAO.findIdsWithMileage(routeIds));
         List<Long> deletableRouteIds = routeIds.stream()
                 .filter(routeId -> !retainedRouteIds.contains(routeId))
                 .toList();

@@ -547,8 +547,7 @@ public class DispatchService {
 
         for (RoutesEntity route : routes) {
             boolean hasActiveOrders = ordersDAO.findByRouteIdOrderBySequence(route.getId()).stream()
-                    .anyMatch(order -> order.getStatus() == OrderStatus.CONFIRMED
-                            || order.getStatus() == OrderStatus.IN_DELIVERY);
+                    .anyMatch(order -> order.getStatus().isActive());
             if (route.getStatus() == RouteStatus.DRAFT && hasActiveOrders) {
                 route.setStatus(RouteStatus.PUBLISHED);
             }
@@ -561,9 +560,7 @@ public class DispatchService {
     /**
      * 撤回當天全部倉庫的發布：PUBLISHED 翻回 DRAFT。
      *
-     * <p>撤回本身不刪任何東西，路線與訂單綁定都還在，只是司機端看不到了。
-     * 但翻回 DRAFT 後這批路線就重新落入 clearExistingDraftRoutes 的清除範圍，
-     * 下一次排車會把它們整批刪掉重建。</p>
+     * <p>撤回保留所有路線與訂單綁定。司機端只繼續顯示已接手的貨物。</p>
      */
     public List<DispatchResponse> withdraw(LocalDate date) {
         List<RoutesEntity> routes = routesDAO.findByDate(date);
@@ -711,7 +708,7 @@ public class DispatchService {
         }
         List<OrdersEntity> boundOrders = ordersDAO.findByRouteIdIn(draftRouteIds);
         List<String> delivering = boundOrders.stream()
-                .filter(order -> order.getStatus() == OrderStatus.IN_DELIVERY)
+                .filter(order -> order.getStatus().isInDriverCustody())
                 .map(OrdersEntity::getOrderNumber)
                 .toList();
         if (!delivering.isEmpty()) {
@@ -733,7 +730,8 @@ public class DispatchService {
                 .filter(order -> order.getStatus() != OrderStatus.CONFIRMED)
                 .map(OrdersEntity::getRouteId)
                 .filter(Objects::nonNull)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(java.util.stream.Collectors.toCollection(HashSet::new));
+        retainedRouteIds.addAll(routesDAO.findIdsWithMileage(draftRouteIds));
         Map<Long, RoutesEntity> reusableRoutes = existing.stream()
                 .filter(route -> retainedRouteIds.contains(route.getId()))
                 .collect(java.util.stream.Collectors.toMap(

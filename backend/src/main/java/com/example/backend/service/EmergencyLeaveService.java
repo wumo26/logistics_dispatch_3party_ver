@@ -87,8 +87,12 @@ public class EmergencyLeaveService {
 
         List<RoutesEntity> routes = routesDAO.findByDateAndDriverIdAndStatusOrderByIdAsc(
                 today, driverId, RouteStatus.PUBLISHED);
+        if (routes.isEmpty()) {
+            routes = routesDAO.findByDateAndDriverIdAndStatusOrderByIdAsc(today, driverId, RouteStatus.DRAFT)
+                    .stream().filter(route -> routesDAO.hasOpenMileage(List.of(route.getId()))).toList();
+        }
         if (routes.size() != 1) {
-            throw new IllegalArgumentException("今天必須恰有一條已發布路線，才能申請路線交接");
+            throw new IllegalArgumentException("今天必須恰有一條已發布或執行中的路線，才能申請路線交接");
         }
 
         RoutesEntity route = routes.getFirst();
@@ -157,8 +161,7 @@ public class EmergencyLeaveService {
 
         RoutesEntity route = routesDAO.findForUpdate(request.getRouteId())
                 .orElseThrow(() -> new EntityNotFoundException("找不到特殊事由申請的路線"));
-        if (route.getStatus() != RouteStatus.PUBLISHED
-                || !today.equals(route.getDate())
+        if (!today.equals(route.getDate())
                 || !request.getDriverId().equals(route.getDriverId())
                 || !request.getVehicleId().equals(route.getVehicleId())) {
             throw new IllegalArgumentException("路線已異動，請重新確認交接內容");
@@ -226,8 +229,7 @@ public class EmergencyLeaveService {
 
         RoutesEntity route = routesDAO.findForUpdate(routeId)
                 .orElseThrow(() -> new EntityNotFoundException("找不到特殊事由申請的路線"));
-        if (route.getStatus() != RouteStatus.PUBLISHED
-                || !workDate.equals(route.getDate())
+        if (!workDate.equals(route.getDate())
                 || !originalDriverId.equals(route.getDriverId())
                 || !request.getVehicleId().equals(route.getVehicleId())) {
             throw new IllegalArgumentException("路線已異動，無法完成特殊事由交接");
@@ -287,8 +289,7 @@ public class EmergencyLeaveService {
     }
 
     private boolean isTransferable(OrdersEntity order) {
-        return order.getStatus() == OrderStatus.CONFIRMED
-                || order.getStatus() == OrderStatus.IN_DELIVERY;
+        return order.getStatus().isActive();
     }
 
     private boolean isWorking(AttendanceStatus status) {

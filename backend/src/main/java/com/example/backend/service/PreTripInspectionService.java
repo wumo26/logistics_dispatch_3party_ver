@@ -24,10 +24,12 @@ public class PreTripInspectionService {
     private final RoutesDAO routes;
     private final DriversDAO drivers;
     private final MileageLogsDAO mileage;
+    private final OrdersDAO orders;
     private final PreTripPhotoStorageService photos;
     public PreTripInspectionService(PreTripInspectionDAO inspections, RoutesDAO routes, DriversDAO drivers,
-                                    MileageLogsDAO mileage, PreTripPhotoStorageService photos) {
-        this.inspections = inspections; this.routes = routes; this.drivers = drivers; this.mileage = mileage; this.photos = photos;
+                                    MileageLogsDAO mileage, OrdersDAO orders, PreTripPhotoStorageService photos) {
+        this.inspections = inspections; this.routes = routes; this.drivers = drivers;
+        this.mileage = mileage; this.orders = orders; this.photos = photos;
     }
 
     public record Result(Long id, Long routeId, Long vehicleId, boolean completed, boolean passed,
@@ -35,14 +37,14 @@ public class PreTripInspectionService {
 
     @Transactional(readOnly = true)
     public Result find(Long driverId, Long routeId) {
-        RoutesEntity route = authorize(driverId, routeId, false);
+        RoutesEntity route = authorize(driverId, routeId, false, true);
         return latest(route).map(this::result).orElse(new Result(null, routeId, route.getVehicleId(), false, false,
                 null, null, "請先完成酒測、車輛檢點、行車紀錄器檢查及照片，再進行倉庫點交"));
     }
 
     public Result submit(Long driverId, PreTripInspectionRequest request, MultipartFile alcohol,
                          MultipartFile vehicle, MultipartFile dashcam) {
-        RoutesEntity route = authorize(driverId, request.routeId(), true);
+        RoutesEntity route = authorize(driverId, request.routeId(), true, true);
         if (request.alcoholMgL() == null || request.alcoholMgL().signum() < 0 || !request.allChecked())
             throw new IllegalArgumentException("請填酒測濃度並逐項确认所有檢查正常");
         List<String> stored = new ArrayList<>();
@@ -70,21 +72,27 @@ public class PreTripInspectionService {
         } catch (RuntimeException e) { stored.forEach(photos::discard); throw e; }
     }
 
-    /** 點交／里程起登與撤回共用路線鎖，避免檢查通过後任務被撤回卻仍能出車。 */
+    /** 點交必須在發布期間，與撤回共用路線鎖。 */
     public RoutesEntity requirePassed(Long driverId, Long routeId) {
-        RoutesEntity route = authorize(driverId, routeId, true);
+        return requirePassed(authorize(driverId, routeId, true, false));
+    }
+
+    /** 已點交的貨仍可按原路線出車，需要通過相同的車輛安全檢查。 */
+    public RoutesEntity requirePassedForDeparture(Long driverId, Long routeId) {
+        return requirePassed(authorize(driverId, routeId, true, true));
+    }
+
+    private RoutesEntity requirePassed(RoutesEntity route) {
         if (latest(route).filter(record -> record.passed).isEmpty())
             throw new IllegalArgumentException("點交前安全檢查尚未通過，請先完成酒測、車輛檢點、行車紀錄器與三張照片");
         return route;
     }
 
-    /** 只有檢查、尚未點交或起登里程的任務可撤回；留下作廢稽核紀錄。 */
+    /** 未執行的檢查作廢。已接貨或已有出車里程時，保留檢查紀錄。 */
     public void prepareWithdraw(LocalDate date) {
-        for (RoutesEntity initial : routes.findByDate(date).stream().sorted(Comparator.comparing(RoutesEntity::getId)).toList()) {
-            RoutesEntity route = routes.findForUpdate(initial.getId()).orElseThrow();
+        for (RoutesEntity route : routes.findByDateForUpdate(date)) {
             if (route.getStatus() != RouteStatus.PUBLISHED) continue;
-            if (!mileage.findAllByRouteIdOrderByStartTimeAsc(route.getId()).isEmpty())
-                throw new IllegalArgumentException("路線 #" + route.getId() + " 已登記出車里程，不能撤回；換人請走司機交接");
+            if (driverHasCargo(route, true) || !mileage.findAllByRouteIdOrderByStartTimeAsc(route.getId()).isEmpty()) continue;
             for (PreTripInspection record : inspections.findByRouteIdAndInvalidatedAtIsNull(route.getId()))
                 record.invalidatedAt = LocalDateTime.now(TAIPEI);
         }
@@ -98,15 +106,22 @@ public class PreTripInspectionService {
             case "dashcam" -> record.dashcamPhoto; default -> throw new IllegalArgumentException("照片類型不合法"); };
         return photos.resolve(file);
     }
-    private RoutesEntity authorize(Long driverId, Long routeId, boolean lock) {
+    private RoutesEntity authorize(Long driverId, Long routeId, boolean lock, boolean allowCustody) {
         if (!drivers.findById(driverId).map(driver -> Boolean.TRUE.equals(driver.getIsActive())).orElse(false))
             throw new IllegalArgumentException("司機帳號已停用或不存在");
         RoutesEntity route = (lock ? routes.findForUpdate(routeId) : routes.findById(routeId))
                 .orElseThrow(() -> new EntityNotFoundException("找不到配送任務"));
-        if (!driverId.equals(route.getDriverId()) || route.getStatus() != RouteStatus.PUBLISHED
-                || !LocalDate.now(TAIPEI).equals(route.getDate()) || route.getVehicleId() == null)
-            throw new IllegalArgumentException("只能操作今天已發布給本人的任務；任務可能已撤回或改派");
+        if (!driverId.equals(route.getDriverId()) || !LocalDate.now(TAIPEI).equals(route.getDate())
+                || route.getVehicleId() == null
+                || (route.getStatus() != RouteStatus.PUBLISHED && !(allowCustody && driverHasCargo(route, lock))))
+            throw new IllegalArgumentException("只能操作今天已發布或已接貨的本人任務");
         return route;
+    }
+
+    private boolean driverHasCargo(RoutesEntity route, boolean lock) {
+        var assigned = lock ? orders.findByRouteIdForUpdate(route.getId()) : orders.findByRouteIdOrderBySequence(route.getId());
+        return assigned.stream()
+                .anyMatch(order -> order.getStatus().isInDriverCustody());
     }
     private Optional<PreTripInspection> latest(RoutesEntity route) {
         return inspections.findFirstByRouteIdAndDriverIdAndVehicleIdAndRouteVersionAndInvalidatedAtIsNullOrderByIdDesc(

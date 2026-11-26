@@ -680,6 +680,7 @@ export interface RouteDto {
 
 /** 路線上的一個停靠點，等於一張訂單 */
 export interface RouteStopDto {
+  orderStatus?: OrderStatus;
   /** 建議配送順序，從 1 開始 */
   sequence: number;
   orderId: number;

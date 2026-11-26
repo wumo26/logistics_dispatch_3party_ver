@@ -1,25 +1,14 @@
-// 營運報表：期間列（.ui-toolbar）→ 五個區塊（.ui-panel：左邊主數字與附屬指標、右邊圖表）→ 統計說明。
-// 結構和 class 被測試綁著（期間按鈕文字、.rate-card、.column、.issue-column 的順序…），這裡只改外觀，顏色一律取色票
 :host { display: block; }
 .operation-report-page { padding-bottom: 24px; }
 button { font: inherit; cursor: pointer; }
 button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-// ── 期間列：分段切換＋上一期／下一期，歷史查詢靠右 ──
-.period-stepper { display: flex; align-items: center; gap: 8px; }
-.period-stepper strong { font-family: var(--font-mono); font-size: 0.9375rem; font-weight: 600; white-space: nowrap; }
-.history-link { margin-left: auto; }
-
 .supplemental-feedback { margin: 0; color: var(--muted); font-size: 0.875rem; }
 .data-alert mat-icon { color: var(--warn); }
 .retry-action { margin-left: auto; }
 
-// ── 五個區塊 ──
-.report-sections { display: grid; gap: 12px; }
-.detail-row { min-width: 0; }
-.detail-name h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.report-sections { display: grid; gap: 20px; }
 
-.row-link,
 .inline-detail {
   display: inline-flex; align-items: center; gap: 4px; padding: 0;
   color: var(--accent); background: none; border: 0; font-size: 0.875rem; white-space: nowrap;
@@ -27,27 +16,41 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); 
   mat-icon { width: 14px; height: 14px; font-size: 14px; }
 }
 
-// 左右兩欄，中間一條 1px 分隔線
-.section-body { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr); }
-.metric-overview, .section-visual { min-width: 0; padding: 16px; }
-.section-visual { border-left: 1px solid var(--border); }
+.section-body {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+  gap: 14px;
+  padding: 0 var(--report-gutter) var(--report-gutter);
+}
+
+.metric-overview,
+.section-visual {
+  min-width: 0;
+  padding: 16px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.metric-overview {
+  background: color-mix(in srgb, var(--surface) 95%, var(--accent));
+}
 
 // 主數字
 .score-item { display: grid; gap: 6px; }
 .score-label { color: var(--muted); font-size: 0.9375rem; }
-.score-item > strong { color: var(--text); font-family: var(--font-mono); font-size: 2rem; font-weight: 600; line-height: 1.1; }
+.score-item > strong { color: var(--text); font-family: var(--font-display); font-size: 2.125rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .score-item > strong small { margin-left: 6px; color: var(--muted); font-size: 0.875rem; font-weight: 400; }
 .score-item > small { color: var(--muted); font-size: 0.875rem; }
 .score-item.is-negative > strong { color: var(--warn); }
 
-// 附屬指標：兩格並排，格線同 .ui-desc，整格可點進明細
-.support-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 16px; border: 1px solid var(--border); border-radius: 4px; }
+// 附屬指標保留明細入口，各自成卡。
+.support-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
 
 .support-metrics > button {
   display: grid; justify-items: start; gap: 4px; min-width: 0; padding: 10px 12px;
-  color: var(--text); background: transparent; border: 0; text-align: left;
-  & + button { border-left: 1px solid var(--border); }
-  &:hover { background: var(--row-hover); }
+  color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 8px; text-align: left;
+  &:hover { border-color: var(--accent); }
 }
 
 .support-metrics span { color: var(--muted); font-size: 0.875rem; }
@@ -60,8 +63,8 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); 
 .status-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
 
 .status-chips button {
-  display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px;
-  color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 2px; font-size: 0.875rem;
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 8px;
+  color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; font-size: 0.875rem;
   &:hover { color: var(--accent); border-color: var(--accent); }
   &.has-warning { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
   strong { font-family: var(--font-mono); }
@@ -73,9 +76,9 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); 
 .rate-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 .rate-card {
-  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0;
-  color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 4px;
-  &:hover { background: var(--row-hover); border-color: var(--border); }
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 4px;
+  color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  &:hover { border-color: var(--accent); }
 }
 
 .rate-ring {
@@ -83,7 +86,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); 
   display: grid; place-items: center; width: 88px; height: 88px; border-radius: 50%;
   background: conic-gradient(var(--ring) var(--sweep), var(--surface-active) 0);
   > span { display: grid; place-items: center; width: 72px; height: 72px; background: var(--panel); border-radius: 50%; }
-  strong { font-family: var(--font-mono); font-size: 1.125rem; font-weight: 600; }
+  strong { font-family: var(--font-mono); font-size: 1.125rem; font-weight: 600; white-space: nowrap; }
   strong small { margin-left: 1px; font-size: 0.6875rem; }
   &.is-empty { background: var(--surface-active); }
   &.is-empty strong { color: var(--subtle); }
@@ -96,13 +99,13 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); 
 .rate-basis { margin-top: -4px; color: var(--muted); font-family: var(--font-mono); font-size: 0.75rem; }
 
 // ── 長條圖 ──
-.chart-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.chart-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 12px; }
 .chart-heading h4 { margin: 0; font-size: 0.9375rem; font-weight: 600; }
 .chart-heading > span { color: var(--subtle); font-size: 0.75rem; }
 .chart-legend { display: flex; gap: 16px; margin: -4px 0 10px; color: var(--muted); font-size: 0.75rem; }
 .chart-legend span { display: flex; align-items: center; gap: 5px; }
 .chart-legend i { width: 8px; height: 8px; background: var(--accent); border-radius: 2px; }
-.chart-legend i.other { background: var(--surface-active); }
+.chart-legend i.other { background: color-mix(in srgb, var(--muted) 50%, var(--surface-active)); }
 .chart-scroll { overflow-x: auto; scrollbar-width: thin; }
 .column-chart { display: grid; grid-template-columns: repeat(var(--columns), minmax(0, 1fr)); gap: 10px; min-width: 310px; padding-top: 22px; }
 .column-chart.is-year { min-width: 590px; }
@@ -117,7 +120,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); 
 .column-plot { position: relative; width: 100%; height: 118px; border-bottom: 1px solid var(--border); }
 .column-stack { display: flex; flex-direction: column-reverse; align-items: center; height: 100%; }
 .column-fill, .column-other { display: block; flex-shrink: 0; width: min(62%, 32px); background: var(--accent); }
-.column-other { background: var(--surface-active); }
+.column-other { background: color-mix(in srgb, var(--muted) 50%, var(--surface-active)); }
 // column-reverse：最後一個子元素在最上面，只有它要圓角
 .column-stack > :last-child { border-radius: 2px 2px 0 0; }
 .column-total { position: absolute; top: -18px; left: 0; width: 100%; font-family: var(--font-mono); font-size: 0.875rem; font-weight: 600; }
@@ -146,7 +149,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); 
 .issue-fill strong small { margin-left: 4px; color: var(--subtle); font-size: 0.6875rem; font-weight: 400; }
 
 // ── 各倉點交相符率：一倉一列，格線同 .ui-table ──
-.warehouse-comparison { display: grid; max-height: 256px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; }
+.warehouse-comparison { display: grid; max-height: 256px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
 
 .warehouse-comparison button {
   display: grid; grid-template-columns: 122px minmax(50px, 1fr) 56px 16px; align-items: center; gap: 12px; padding: 8px 10px;
@@ -165,9 +168,9 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); 
 
 // ── 統計說明：預設收合 ──
 .scope-note { color: var(--muted); font-size: 0.875rem; line-height: 1.7; }
-.scope-note summary { padding: 10px 14px; color: var(--text); font-weight: 500; cursor: pointer; }
+.scope-note summary { padding: 14px var(--report-gutter); color: var(--text); font-weight: 600; cursor: pointer; }
 .scope-note[open] summary { border-bottom: 1px solid var(--border); }
-.scope-content { display: grid; gap: 8px; padding: 12px 14px; }
+.scope-content { display: grid; gap: 8px; padding: 14px var(--report-gutter); }
 .scope-content p { margin: 0; }
 
 @media (max-width: 980px) {
@@ -176,13 +179,19 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); 
   .rate-ring > span { width: 62px; height: 62px; }
 }
 
-@media (max-width: 720px) {
-  .section-body { grid-template-columns: minmax(0, 1fr); }
-  .section-visual { border-top: 1px solid var(--border); border-left: 0; }
-  .history-link { margin-left: 0; }
+@media (max-width: 820px) {
+  .section-body { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 }
 
 @media (max-width: 400px) {
+  .metric-overview, .section-visual { padding: 12px; }
+  .rate-ring { width: 56px; height: 56px; }
+  .rate-ring > span { width: 46px; height: 46px; }
+  .rate-ring strong { font-size: 0.875rem; }
+  .rate-label { display: block; font-size: 0.75rem; }
+  .rate-label mat-icon { display: none; }
   .warehouse-comparison button { grid-template-columns: 95px minmax(25px, 1fr) 48px 12px; gap: 7px; }
+  .issue-chart { gap: 8px; }
+  .issue-column > span:last-child { font-size: 0.75rem; overflow-wrap: anywhere; }
   .data-alert { flex-wrap: wrap; }
 }

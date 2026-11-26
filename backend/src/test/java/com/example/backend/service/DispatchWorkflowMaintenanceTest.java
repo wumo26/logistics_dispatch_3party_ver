@@ -40,8 +40,7 @@ class DispatchWorkflowMaintenanceTest {
         LocalDate date = LocalDate.of(2026, 9, 27);
 
         workflow.withdraw(date);
-        var order = inOrder(guard, inspection, dispatch);
-        order.verify(guard).assertCanWithdraw(date);
+        var order = inOrder(inspection, dispatch);
         order.verify(inspection).prepareWithdraw(date);
         order.verify(dispatch).withdraw(date);
     }

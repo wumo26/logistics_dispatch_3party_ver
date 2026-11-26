@@ -200,7 +200,7 @@
       </section>
 
       @if (published()) {
-        <p class="board-status">已發布：要調整待送訂單或司機，請先撤回發布。已完成訂單維持完成，不會阻擋撤回；已裝車或配送中的貨物須先交接。</p>
+        <p class="board-status">已發布：撤回會收回尚未點交的任務。已點交或配送中的貨物仍可在地圖追蹤。</p>
       }
       @if (publishError()) {
         <p class="board-error">{{ publishError() }}</p>
@@ -251,7 +251,7 @@
                   <p class="lane-driver-status">
                     <!-- 班表有問題時標籤直接顯示原因，紅框配紅字，調度員不用點開就知道哪裡不能派 -->
                     <span [class.is-warning]="routeScheduleProblem(route) !== null">
-                      {{ routeScheduleProblem(route) ?? routeDriverStatus(route) }}
+                      {{ route.hasLockedStops ? '已接貨 · 持續追蹤' : (routeScheduleProblem(route) ?? routeDriverStatus(route)) }}
                     </span>
                   </p>
                 </header>
@@ -264,7 +264,7 @@
                   class="board-driver lane-driver-select"
                   [attr.aria-label]="'指派司機 ' + (route.plateNumber || '空白格')"
                   [class.is-unassigned]="route.driverId === null"
-                  [disabled]="busy() || route.isMaintenance || published()"
+                  [disabled]="busy() || route.isMaintenance || route.hasLockedStops || published()"
                   (change)="onDriverChange(route, $event)"
                 >
                   <option value="" [selected]="route.driverId === null">未指派司機</option>
@@ -286,7 +286,7 @@
                   class="board-driver lane-vehicle-select"
                   aria-label="選擇車輛"
                   [class.is-unassigned]="route.vehicleId === null"
-                  [disabled]="busy() || published()"
+                  [disabled]="busy() || route.hasLockedStops || published()"
                   (change)="onVehicleChange(route, $event)"
                 >
                   <option value="" [selected]="route.vehicleId === null">未選車</option>
@@ -581,7 +581,7 @@
   <h2 mat-dialog-title>撤回發布</h2>
   <mat-dialog-content>
     <p>確定撤回 {{ dispatchDateLabel() }} 全部倉庫的發布嗎？</p>
-    <p>撤回後未完成的路線回到草稿，司機端的任務會暫時隱藏，重新發布後才會恢復。已開始配送的貨物請先確認交接狀態。</p>
+    <p>撤回後，尚未點交的任務會暫時從司機端隱藏。已點交或配送中的貨物仍由原司機處理，主管可繼續追蹤位置。</p>
   </mat-dialog-content>
   <mat-dialog-actions align="end">
     <button type="button" matButton [mat-dialog-close]="false">取消</button>

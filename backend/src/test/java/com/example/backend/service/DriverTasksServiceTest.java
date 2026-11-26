@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
 class DriverTasksServiceTest {
 
     @Test
-    void 指定日期任務只查詢登入司機該日已發布路線() {
+    void 未來指定日期只查詢登入司機該日已發布路線() {
         DriversDAO driversDAO = mock(DriversDAO.class);
         RoutesDAO routesDAO = mock(RoutesDAO.class);
         DriverTasksService service = new DriverTasksService(
@@ -47,7 +47,7 @@ class DriverTasksServiceTest {
         driver.setIsActive(true);
         when(driversDAO.findById(7L)).thenReturn(Optional.of(driver));
 
-        LocalDate selectedDate = LocalDate.of(2026, 10, 1);
+        LocalDate selectedDate = LocalDate.now(ZoneId.of("Asia/Taipei")).plusDays(1);
         when(routesDAO.findByDateAndDriverIdAndStatusOrderByIdAsc(
                 selectedDate, 7L, RouteStatus.PUBLISHED)).thenReturn(List.of());
 
@@ -79,8 +79,8 @@ class DriverTasksServiceTest {
 
         LocalDate date = LocalDate.now(ZoneId.of("Asia/Taipei")).minusDays(1);
         RoutesEntity route = futureRoute(31L, date, 1L, 11L);
-        when(routesDAO.findByDateAndDriverIdAndStatusOrderByIdAsc(
-                date, 7L, RouteStatus.PUBLISHED)).thenReturn(List.of(route));
+        route.setStatus(RouteStatus.DRAFT);
+        when(routesDAO.findByDateAndDriverIdOrderByIdAsc(date, 7L)).thenReturn(List.of(route));
         OrdersEntity order = futureOrder(41L, 31L, 1L, 21L, "DO-COMPLETE");
         order.setStatus(OrderStatus.COMPLETED);
         when(ordersDAO.findByRouteIdIn(anyList())).thenReturn(List.of(order));
@@ -118,8 +118,7 @@ class DriverTasksServiceTest {
         route.setWarehouseId(1L);
         route.setVehicleId(2L);
         route.setStatus(RouteStatus.PUBLISHED);
-        when(routesDAO.findByDateAndDriverIdAndStatusOrderByIdAsc(
-                route.getDate(), 7L, RouteStatus.PUBLISHED)).thenReturn(List.of(route));
+        when(routesDAO.findByDateAndDriverIdOrderByIdAsc(route.getDate(), 7L)).thenReturn(List.of(route));
 
         OrdersEntity order = new OrdersEntity();
         order.setId(41L);
@@ -161,6 +160,11 @@ class DriverTasksServiceTest {
         assertEquals(3, stop.getItems().getFirst().getExpectedQuantity());
         assertEquals("箱", stop.getItems().getFirst().getUnit());
         assertFalse(stop.getItems().getFirst().getChecked());
+
+        route.setStatus(RouteStatus.DRAFT);
+        assertTrue(service.findToday(7L).getRoutes().isEmpty());
+        order.setStatus(OrderStatus.LOADED);
+        assertEquals(OrderStatus.LOADED, service.findToday(7L).getRoutes().getFirst().getStops().getFirst().getOrderStatus());
     }
 
     @Test

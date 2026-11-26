@@ -60,17 +60,14 @@ public class DriverTasksService {
     }
 
     public DriverTasksResponse findToday(Long driverId) {
-        DriversEntity driver = requireActiveDriver(driverId);
-        LocalDate today = LocalDate.now(TAIPEI);
-        List<RoutesEntity> routes = routesDAO.findByDateAndDriverIdAndStatusOrderByIdAsc(
-                today, driverId, RouteStatus.PUBLISHED);
-        return buildResponse(today, driver, routes);
+        return findByDate(driverId, LocalDate.now(TAIPEI));
     }
 
     public DriverTasksResponse findByDate(Long driverId, LocalDate date) {
         DriversEntity driver = requireActiveDriver(driverId);
-        List<RoutesEntity> routes = routesDAO.findByDateAndDriverIdAndStatusOrderByIdAsc(
-                date, driverId, RouteStatus.PUBLISHED);
+        List<RoutesEntity> routes = date.isAfter(LocalDate.now(TAIPEI))
+                ? routesDAO.findByDateAndDriverIdAndStatusOrderByIdAsc(date, driverId, RouteStatus.PUBLISHED)
+                : routesDAO.findByDateAndDriverIdOrderByIdAsc(date, driverId);
         return buildResponse(date, driver, routes);
     }
 
@@ -168,6 +165,10 @@ public class DriverTasksService {
             List<DriverTasksResponse.Stop> stops = new ArrayList<>();
             int totalBoxes = 0;
             for (OrdersEntity order : ordersByRoute.getOrDefault(route.getId(), List.of())) {
+                if (route.getStatus() == RouteStatus.DRAFT && !order.getStatus().isInDriverCustody()
+                        && !(historical && !order.getStatus().isActive())) {
+                    continue;
+                }
                 StoresEntity store = stores.get(order.getStoreId());
                 if (store == null) {
                     throw new IllegalStateException("配送任務找不到門市，ID：" + order.getStoreId());

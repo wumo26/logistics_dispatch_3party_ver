@@ -59,9 +59,6 @@ class DispatchWithdrawalHistoryTest {
         when(stores.findAllById(any())).thenReturn(List.of(store));
         when(osrm.table(any())).thenReturn(new long[][]{{0, 100}, {100, 0}});
 
-        DispatchGuardService guard = new DispatchGuardService(mock(DriverShiftsDAO.class), drivers,
-                routes, orders, vehicles, mock(ScheduleMonthsDAO.class));
-        assertDoesNotThrow(() -> guard.assertCanWithdraw(date));
         dispatch.withdraw(date);
         assertEquals(RouteStatus.DRAFT, route.getStatus());
 

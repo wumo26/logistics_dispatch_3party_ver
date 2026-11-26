@@ -144,7 +144,6 @@ public class DispatchWorkflowService {
 
     @Transactional
     public List<DispatchResponse> withdraw(LocalDate date) {
-        dispatchGuardService.assertCanWithdraw(date);
         preTripInspectionService.prepareWithdraw(date);
         dispatchService.withdraw(date);
         return dispatchBoardService.getBoards(date);

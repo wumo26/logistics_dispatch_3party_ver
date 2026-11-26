@@ -6,7 +6,7 @@ import {DispatchDashboard} from './dispatch-dashboard';
 import {LiveFleetMap} from '../../components/live-fleet-map/live-fleet-map';
 import {DispatchApiService} from '../../../../core/services/dispatch-api.service';
 import {DriverChatSocketService} from '../../../../core/services/driver-chat-socket.service';
-import {DispatchBoardPushDto, DispatchDayDto, DispatchDayStatus, DispatchResultDto, OrderDto} from '../../../../core/services/dispatch-api.models';
+import {DispatchBoardPushDto, DispatchDayDto, DispatchDayStatus, DispatchResultDto, GpsPingDto, OrderDto} from '../../../../core/services/dispatch-api.models';
 
 @Component({
   selector: 'app-live-fleet-map', template: '',
@@ -42,7 +42,7 @@ describe('原版看板撤回發布入口', () => {
       getStores: vi.fn(() => of([])), getVehicles: vi.fn(() => of([{id: 1, warehouseId: 1, plateNumber: 'CAR-TEST', capacity: 100, status: 'AVAILABLE'}])),
       getDrivers: vi.fn(() => of([{id: 1, warehouseId: 1, account: 'TEST', name: '測試司機', isActive: true}])),
       getWarehouses: vi.fn(() => of([warehouse])), getTemplates: vi.fn(() => of([])),
-      getDispatchBoard: vi.fn(() => of(board('PUBLISHED'))), getRouteMetrics: vi.fn(() => of(null)), getLiveFleet: vi.fn(() => of([])),
+      getDispatchBoard: vi.fn(() => of(board('PUBLISHED'))), getRouteMetrics: vi.fn(() => of(null)), getLiveFleet: vi.fn(() => of<GpsPingDto[]>([])),
       getDispatchDays: vi.fn(() => of<DispatchDayDto[]>([{date: workDate, status: 'PUBLISHED', published: true, orderCount: 1, pendingConfirmCount: 0, unassignedCount: 0, finishedCount: 0}])),
       getScheduleMonth: vi.fn(() => of({id: 1, status: 'PUBLISHED'})),
       getScheduleMonthShifts: vi.fn(() => of([{id: 1, driverId: 1, workDate: workDate, shiftType: 'WORK'}])),
@@ -127,6 +127,24 @@ describe('原版看板撤回發布入口', () => {
     expect(api.publishDispatch).toHaveBeenCalledWith(workDate);
     expect(page.published()).toBe(true);
     expect(button('撤回發布')).toBeDefined();
+  });
+
+  it('keeps a GPS marker for loaded cargo after the route is withdrawn', () => {
+    const result = board('DRAFT');
+    result.routes[0].stops[0].orderStatus = 'LOADED';
+    api.withdrawDispatch.mockReturnValue(of([result]));
+    api.getLiveFleet.mockReturnValue(of([
+      {id: 1, driverId: 1, lat: 22.61, lng: 120.31, timestamp: new Date().toISOString()},
+    ]));
+
+    page.withdraw();
+    fixture.detectChanges();
+    vi.advanceTimersByTime(30_000);
+    fixture.detectChanges();
+
+    expect(page.published()).toBe(false);
+    expect(page.routes()[0].hasLockedStops).toBe(true);
+    expect(page.mapDrivers()[0]).toMatchObject({id: 1, detail: '訂單 ORDER-TEST', lat: 22.61, lng: 120.31});
   });
 
   it('stays editable after withdrawal, a drag save and its real debounced board push', () => {

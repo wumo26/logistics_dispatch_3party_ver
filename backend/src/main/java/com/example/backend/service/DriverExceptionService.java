@@ -62,10 +62,10 @@ public class DriverExceptionService {
         RoutesEntity route = routesDAO.findById(order.getRouteId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "找不到路線，ID：" + order.getRouteId()));
-        if (route.getStatus() != RouteStatus.PUBLISHED
-                || !driverId.equals(route.getDriverId())
+        if (!driverId.equals(route.getDriverId())
+                || (route.getStatus() != RouteStatus.PUBLISHED && !order.getStatus().isInDriverCustody())
                 || !LocalDate.now(TAIPEI).equals(route.getDate())) {
-            throw new IllegalArgumentException("只能回報本人今天已發布路線的異常");
+            throw new IllegalArgumentException("只能回報本人今天已發布或已接貨的任務異常");
         }
         if (!order.getStatus().isActive()) {
             throw new IllegalArgumentException("訂單已結案，不能新增配送異常：" + order.getStatus());

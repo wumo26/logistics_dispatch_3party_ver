@@ -451,7 +451,7 @@ public class DeliveryService {
         RoutesEntity route = routesDAO.findById(order.getRouteId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         DELIVERY_ROUTE_NOT_FOUND.formatted(order.getRouteId())));
-        if (route.getStatus() != RouteStatus.PUBLISHED) {
+        if (route.getStatus() != RouteStatus.PUBLISHED && !order.getStatus().isInDriverCustody()) {
             throw new IllegalArgumentException(DELIVERY_ROUTE_NOT_PUBLISHED);
         }
         if (!today.equals(route.getDate())) {

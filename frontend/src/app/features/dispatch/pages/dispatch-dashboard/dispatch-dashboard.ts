@@ -91,6 +91,7 @@ function minutesAgo(timestamp: string): number {
 interface BoardCard {
   orderId: number;
   orderNumber: string;
+  orderStatus?: OrderStatus;
   storeId: number;
   storeCode: string;
   storeName: string;
@@ -140,6 +141,7 @@ function toBoardCard(source: RouteStopDto | UnassignedOrderDto): BoardCard {
     storeCode: source.storeCode,
     storeName: source.storeName,
     boxCount: source.boxCount,
+    ...('orderStatus' in source && source.orderStatus ? {orderStatus: source.orderStatus} : {}),
   };
 }
 
@@ -496,7 +498,9 @@ export class DispatchDashboard implements OnInit {
    * 一次 401 或後端重啟就會讓整條 stream complete，之後永遠不會再重試。
    */
   /** 派出後的卡片要顯示每台車的定位，所以不只開圖層時要抓 */
-  private readonly needLivePings = computed(() => this.showDriverPoints() || this.published());
+  private readonly needLivePings = computed(() =>
+    this.showDriverPoints() || this.published() || this.routes().some((route) => route.hasLockedStops),
+  );
 
   private readonly livePings = toSignal(
     toObservable(this.needLivePings).pipe(
@@ -525,48 +529,29 @@ export class DispatchDashboard implements OnInit {
         .map((driver) => [driver.id!, driver.name]),
     );
 
-    const storesById = new Map(
-      this.stores().filter((store) => store.id != null).map((store) => [store.id!, store]),
-    );
-    const publishedDriverIds = new Set(
-      this.routes()
-        .filter((route) => route.routeStatus === 'PUBLISHED' && route.driverId !== null && !route.isMaintenance)
-        .map((route) => route.driverId!),
-    );
-    const activeOrdersByDriver = new Map<number, OrderDto>();
-    this.orders()
-      .filter((order) =>
-        order.deliveryDate === this.dispatchDate()
-        && order.assignedDriverId != null
-        && publishedDriverIds.has(order.assignedDriverId)
-        // 少了 LOADED 的話，司機全部點交完出車後就會從即時地圖上消失
-        && (order.status === 'CONFIRMED' || order.status === 'LOADED' || order.status === 'IN_DELIVERY'),
-      )
-      .sort((left, right) => (left.sequence ?? Number.MAX_SAFE_INTEGER) - (right.sequence ?? Number.MAX_SAFE_INTEGER))
-      .forEach((order) => {
-        if (!activeOrdersByDriver.has(order.assignedDriverId!)) {
-          activeOrdersByDriver.set(order.assignedDriverId!, order);
-        }
+    const trackedCargo = new Map<number, {route: BoardRoute; stop: BoardCard}>();
+    for (const route of this.routes()) {
+      if (route.driverId === null) continue;
+      const stop = route.cards.find((card) => {
+        const status = card.orderStatus ?? this.boardCardStatus(card);
+        return status === 'LOADED' || status === 'IN_DELIVERY'
+          || (status === 'CONFIRMED' && route.routeStatus === 'PUBLISHED' && !route.isMaintenance);
       });
-    const routeByDriver = new Map(
-      this.routes()
-        .filter((route) => route.routeStatus === 'PUBLISHED' && route.driverId !== null && !route.isMaintenance)
-        .map((route) => [route.driverId!, route]),
-    );
+      if (stop) trackedCargo.set(route.driverId, {route, stop});
+    }
     const metricsByRoute = this.routeMetricsByRouteId();
 
     return this.livePings()
-      .filter((ping) => activeOrdersByDriver.has(ping.driverId))
+      .filter((ping) => trackedCargo.has(ping.driverId))
       .map((ping) => {
-        const order = activeOrdersByDriver.get(ping.driverId)!;
-        const route = routeByDriver.get(ping.driverId);
-        const metrics = route ? metricsByRoute.get(route.routeId) : undefined;
+        const {route, stop} = trackedCargo.get(ping.driverId)!;
+        const metrics = metricsByRoute.get(route.routeId);
         const details = [
-          `訂單 ${order.orderNumber}`,
+          `訂單 ${stop.orderNumber}`,
           `預估抵達 ${this.formatEstimatedArrival(metrics?.estimatedNextArrivalAt)}`,
           `預估里程 ${this.formatKm(metrics?.remainingKm)}`,
           `預估油耗 ${this.formatFuel(metrics?.gpsEstimatedFuelLiters)}`,
-          `${storesById.get(order.storeId)?.name ?? `門市 #${order.storeId}`} · ${minutesAgo(ping.timestamp)} 分鐘前回報`,
+          `${stop.storeName} · ${minutesAgo(ping.timestamp)} 分鐘前回報`,
         ];
         return {
           id: ping.driverId,
@@ -2227,7 +2212,7 @@ export class DispatchDashboard implements OnInit {
         .filter((order) => order.status === 'CONFIRMED')
         .map((order) => order.id),
     );
-    // 已點交、配送中的單：貨已經在車上，後端不讓撤回重排，所以有這種單的格子整格鎖住
+    // 已接貨的車道在撤回後仍保留原人車指派。
     const deliveringOrderIds = new Set(
       this.orders()
         .filter((order) => order.status === 'LOADED' || order.status === 'IN_DELIVERY')
@@ -2265,7 +2250,8 @@ export class DispatchDashboard implements OnInit {
           driverId: route.driverId ?? null,
           totalDistance: route.totalDistance ?? 0,
           routeStatus: route.status ?? 'DRAFT',
-          hasLockedStops: routeStops.some((stop) => deliveringOrderIds.has(stop.orderId)),
+          hasLockedStops: routeStops.some((stop) =>
+            stop.orderStatus === 'LOADED' || stop.orderStatus === 'IN_DELIVERY' || deliveringOrderIds.has(stop.orderId)),
           isMaintenance,
           // 路線上的單全部顯示，包含配送中、已完成、配送失敗：派出後要看得到送到哪裡。
           // 只有待送（CONFIRMED）的能拖、會送進 reassign，其他的只顯示（見 isDispatchable）

@@ -1,6 +1,7 @@
 package com.example.backend.service;
 
 import com.example.backend.constants.RouteStatus;
+import com.example.backend.constants.OrderStatus;
 import com.example.backend.dao.*;
 import com.example.backend.dto.request.PreTripInspectionRequest;
 import com.example.backend.entity.*;
@@ -16,6 +17,7 @@ import static org.mockito.Mockito.*;
 
 class PreTripInspectionServiceTest {
     PreTripInspectionDAO dao; RoutesDAO routes; MileageLogsDAO mileage; PreTripPhotoStorageService photos;
+    OrdersDAO orders;
     PreTripInspectionService service; RoutesEntity route;
     @BeforeEach void setup() {
         dao = mock(PreTripInspectionDAO.class); routes = mock(RoutesDAO.class); mileage = mock(MileageLogsDAO.class);
@@ -24,7 +26,8 @@ class PreTripInspectionServiceTest {
         route = new RoutesEntity(); route.setId(3L); route.setDriverId(1L); route.setVehicleId(2L); route.setStatus(RouteStatus.PUBLISHED);
         route.setDate(LocalDate.now(ZoneId.of("Asia/Taipei")));
         when(routes.findForUpdate(3L)).thenReturn(Optional.of(route)); when(routes.findById(3L)).thenReturn(Optional.of(route));
-        service = new PreTripInspectionService(dao, routes, drivers, mileage, photos);
+        orders = mock(OrdersDAO.class);
+        service = new PreTripInspectionService(dao, routes, drivers, mileage, orders, photos);
     }
     @AfterEach void cleanup() { if (TransactionSynchronizationManager.isSynchronizationActive()) TransactionSynchronizationManager.clearSynchronization(); }
     PreTripInspectionRequest request(String concentration) {
@@ -67,14 +70,26 @@ class PreTripInspectionServiceTest {
         verify(photos).discard("a.jpg"); verify(dao,never()).saveAndFlush(any());
     }
     @Test void 完成檢查仍能撤回且所有紀錄作廢() {
-        when(routes.findByDate(route.getDate())).thenReturn(List.of(route));
+        when(routes.findByDateForUpdate(route.getDate())).thenReturn(List.of(route));
         PreTripInspection record = new PreTripInspection(); when(dao.findByRouteIdAndInvalidatedAtIsNull(3L)).thenReturn(List.of(record));
         service.prepareWithdraw(route.getDate()); assertNotNull(record.invalidatedAt);
     }
-    @Test void 已起登里程不能撤回() {
-        when(routes.findByDate(route.getDate())).thenReturn(List.of(route));
+    @Test void 已起登里程的檢查在撤回後保留() {
+        when(routes.findByDateForUpdate(route.getDate())).thenReturn(List.of(route));
         when(mileage.findAllByRouteIdOrderByStartTimeAsc(3L)).thenReturn(List.of(new MileageLogsEntity()));
-        assertThrows(IllegalArgumentException.class, () -> service.prepareWithdraw(route.getDate()));
+        service.prepareWithdraw(route.getDate());
+        verify(dao, never()).findByRouteIdAndInvalidatedAtIsNull(3L);
+    }
+    @Test void 撤回後已接貨仍可出車但不能再點交其他訂單() {
+        route.setStatus(RouteStatus.DRAFT);
+        OrdersEntity order = new OrdersEntity();
+        order.setStatus(OrderStatus.LOADED);
+        when(orders.findByRouteIdForUpdate(3L)).thenReturn(List.of(order));
+        PreTripInspection record = new PreTripInspection();
+        record.passed = true;
+        when(dao.findFirstByRouteIdAndDriverIdAndVehicleIdAndRouteVersionAndInvalidatedAtIsNullOrderByIdDesc(3L,1L,2L,1)).thenReturn(Optional.of(record));
+        assertSame(route, service.requirePassedForDeparture(1L, 3L));
+        assertThrows(IllegalArgumentException.class, () -> service.requirePassed(1L, 3L));
     }
     @Test void 不能看別人的酒測照片() {
         PreTripInspection record = new PreTripInspection(); record.driverId=8L; when(dao.findById(4L)).thenReturn(Optional.of(record));

@@ -15,6 +15,10 @@ public enum OrderStatus {
      * 只看狀態、不管有沒有排進路線；呼叫端通常已經先用路線篩過訂單。
      */
     public boolean isActive() {
-        return this == CONFIRMED || this == LOADED || this == IN_DELIVERY;
+        return this == CONFIRMED || isInDriverCustody();
+    }
+
+    public boolean isInDriverCustody() {
+        return this == LOADED || this == IN_DELIVERY;
     }
 }

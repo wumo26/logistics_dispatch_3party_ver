@@ -22,6 +22,27 @@ public interface RoutesDAO extends JpaRepository<RoutesEntity, Long> {
 
     List<RoutesEntity> findByDateAndWarehouseId(LocalDate date, Long warehouseId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select route from RoutesEntity route
+            where route.date = :date and route.warehouseId = :warehouseId
+            order by route.id
+            """)
+    List<RoutesEntity> findByDateAndWarehouseIdForUpdate(
+            @Param("date") LocalDate date, @Param("warehouseId") Long warehouseId);
+
+    @Query("""
+            select distinct mileage.routeId from MileageLogsEntity mileage
+            where mileage.routeId in :routeIds
+            """)
+    List<Long> findIdsWithMileage(@Param("routeIds") Collection<Long> routeIds);
+
+    @Query("""
+            select (count(mileage) > 0) from MileageLogsEntity mileage
+            where mileage.routeId in :routeIds and mileage.endTime is null
+            """)
+    boolean hasOpenMileage(@Param("routeIds") Collection<Long> routeIds);
+
     /**
      * 當天全部倉庫的路線。
      *
@@ -29,6 +50,10 @@ public interface RoutesDAO extends JpaRepository<RoutesEntity, Long> {
      * 所以這裡不帶 warehouseId。
      */
     List<RoutesEntity> findByDate(LocalDate date);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select route from RoutesEntity route where route.date = :date order by route.id")
+    List<RoutesEntity> findByDateForUpdate(@Param("date") LocalDate date);
 
     /**
      * 當天已指派司機的全部路線，不分倉庫。
@@ -38,9 +63,16 @@ public interface RoutesDAO extends JpaRepository<RoutesEntity, Long> {
      */
     List<RoutesEntity> findByDateAndDriverIdIsNotNull(LocalDate date);
 
-    /** 司機端只讀取已正式發布給本人的路線。 */
+    /** 尚未到配送日的預覽只對已發布路線開放。 */
     List<RoutesEntity> findByDateAndDriverIdAndStatusOrderByIdAsc(
             LocalDate date, Long driverId, RouteStatus status);
+
+    List<RoutesEntity> findByDateAndDriverIdOrderByIdAsc(LocalDate date, Long driverId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select route from RoutesEntity route where route.date = :date and route.driverId = :driverId")
+    Optional<RoutesEntity> findForDriverOnDateForUpdate(
+            @Param("date") LocalDate date, @Param("driverId") Long driverId);
 
     /** 司機端預覽今天之後所有已發布任務，依配送日與路線排序。 */
     List<RoutesEntity> findByDateGreaterThanAndDriverIdAndStatusOrderByDateAscIdAsc(

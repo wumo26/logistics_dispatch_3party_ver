@@ -32,6 +32,7 @@ class DispatchGuardServiceTest {
     private final List<DriverShiftsEntity> shifts = new ArrayList<>();
     private final List<DriversEntity> drivers = new ArrayList<>();
 
+    private RoutesDAO routesDAO;
     private OrdersDAO ordersDAO;
     private VehiclesDAO vehiclesDAO;
     private ScheduleMonthsDAO scheduleMonthsDAO;
@@ -39,14 +40,14 @@ class DispatchGuardServiceTest {
 
     @BeforeEach
     void setUp() {
-        RoutesDAO routesDAO = mock(RoutesDAO.class);
+        routesDAO = mock(RoutesDAO.class);
         DriverShiftsDAO driverShiftsDAO = mock(DriverShiftsDAO.class);
         DriversDAO driversDAO = mock(DriversDAO.class);
         ordersDAO = mock(OrdersDAO.class);
         vehiclesDAO = mock(VehiclesDAO.class);
         scheduleMonthsDAO = mock(ScheduleMonthsDAO.class);
 
-        when(routesDAO.findByDate(DATE)).thenReturn(routes);
+        when(routesDAO.findByDateForUpdate(DATE)).thenReturn(routes);
         when(driverShiftsDAO.findAllByWorkDate(DATE)).thenReturn(shifts);
         when(driversDAO.findAllById(any())).thenReturn(drivers);
         givenMonth(ScheduleStatus.PUBLISHED);
@@ -180,71 +181,42 @@ class DispatchGuardServiceTest {
     }
 
     @Test
-    void 撤回_已開始配送就擋下() {
-        givenRoute(10L, "TN-2001", 1L, 5, OrderStatus.IN_DELIVERY).setStatus(RouteStatus.PUBLISHED);
+    void 撤回後_配送中的貨物仍不能用一般排車改派() {
+        RoutesEntity route = givenRoute(10L, "TN-2001", 1L, 5, OrderStatus.IN_DELIVERY);
+        when(routesDAO.findByDateAndWarehouseIdForUpdate(DATE, 1L)).thenReturn(List.of(route));
         OrdersEntity delivering = new OrdersEntity();
         delivering.setOrderNumber("DO-001");
         delivering.setStatus(OrderStatus.IN_DELIVERY);
         when(ordersDAO.findByRouteIdIn(List.of(10L))).thenReturn(List.of(delivering));
 
-        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> guard.assertCanWithdraw(DATE));
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> guard.assertCanReplan(DATE, 1L));
         assertTrue(e.getMessage().contains("DO-001"), e.getMessage());
     }
 
     @Test
-    void 撤回_已點交就擋下_貨已經在車上() {
-        givenRoute(10L, "TN-2001", 1L, 5, OrderStatus.LOADED).setStatus(RouteStatus.PUBLISHED);
+    void 撤回後_已點交的貨物仍不能用一般排車改派() {
+        RoutesEntity route = givenRoute(10L, "TN-2001", 1L, 5, OrderStatus.LOADED);
+        when(routesDAO.findByDateAndWarehouseIdForUpdate(DATE, 1L)).thenReturn(List.of(route));
         OrdersEntity loaded = new OrdersEntity();
         loaded.setOrderNumber("DO-002");
         loaded.setStatus(OrderStatus.LOADED);
         when(ordersDAO.findByRouteIdIn(List.of(10L))).thenReturn(List.of(loaded));
 
-        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> guard.assertCanWithdraw(DATE));
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> guard.assertCanReplan(DATE, 1L));
         assertTrue(e.getMessage().contains("DO-002"), e.getMessage());
     }
 
     @Test
-    void 撤回_還沒出發可以撤回() {
-        givenRoute(10L, "TN-2001", 1L, 5, OrderStatus.CONFIRMED).setStatus(RouteStatus.PUBLISHED);
+    void 撤回後_尚未回倉的車輛仍不能重排() {
+        RoutesEntity route = givenRoute(10L, "TN-2001", 1L, 5, OrderStatus.CONFIRMED);
+        when(routesDAO.findByDateAndWarehouseIdForUpdate(DATE, 1L)).thenReturn(List.of(route));
         OrdersEntity waiting = new OrdersEntity();
-        waiting.setOrderNumber("DO-001");
         waiting.setStatus(OrderStatus.CONFIRMED);
         when(ordersDAO.findByRouteIdIn(List.of(10L))).thenReturn(List.of(waiting));
-
-        assertDoesNotThrow(() -> guard.assertCanWithdraw(DATE));
-    }
-
-    @Test
-    void 撤回_三筆已完成和一筆待送不應鎖住整天() {
-        givenRoute(10L, "TN-2001", 1L, 5, OrderStatus.CONFIRMED).setStatus(RouteStatus.PUBLISHED);
-        List<OrdersEntity> orders = new ArrayList<>();
-        for (int index = 0; index < 4; index++) {
-            OrdersEntity order = new OrdersEntity();
-            order.setOrderNumber("DO-" + index);
-            order.setStatus(index < 3 ? OrderStatus.COMPLETED : OrderStatus.CONFIRMED);
-            order.setAssignedDriverId(1L);
-            order.setAssignedVehicleId(110L);
-            orders.add(order);
-        }
-        when(ordersDAO.findByRouteIdIn(List.of(10L))).thenReturn(orders);
-
-        assertDoesNotThrow(() -> guard.assertCanWithdraw(DATE));
-        assertEquals(3, orders.stream().filter(order -> order.getStatus() == OrderStatus.COMPLETED).count());
-        assertTrue(orders.stream().allMatch(order -> order.getAssignedDriverId().equals(1L)));
-    }
-
-    @Test
-    void 撤回_已結案的失敗和未簽收不會阻擋待送訂單() {
-        givenRoute(10L, "TN-2001", 1L, 5, OrderStatus.CONFIRMED).setStatus(RouteStatus.PUBLISHED);
-        OrdersEntity failed = new OrdersEntity();
-        failed.setStatus(OrderStatus.FAILED);
-        OrdersEntity noSignature = new OrdersEntity();
-        noSignature.setStatus(OrderStatus.NO_SIGNATURE);
-        when(ordersDAO.findByRouteIdIn(List.of(10L))).thenReturn(List.of(failed, noSignature));
-
-        assertDoesNotThrow(() -> guard.assertCanWithdraw(DATE));
-        assertEquals(OrderStatus.FAILED, failed.getStatus());
-        assertEquals(OrderStatus.NO_SIGNATURE, noSignature.getStatus());
+        when(routesDAO.hasOpenMileage(List.of(10L))).thenReturn(true);
+        assertThrows(IllegalArgumentException.class, () -> guard.assertCanReplan(DATE, 1L));
+        when(routesDAO.hasOpenMileage(List.of(10L))).thenReturn(false);
+        assertDoesNotThrow(() -> guard.assertCanReplan(DATE, 1L));
     }
 
     private String publishFailure() {

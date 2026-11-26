@@ -84,17 +84,10 @@ public class MileageLogsService {
         LocalDate today = now.toLocalDate();
         requireActiveDriver(driverId);
 
-        List<RoutesEntity> routes = routesDAO.findByDateAndDriverIdAndStatusOrderByIdAsc(
-                today, driverId, RouteStatus.PUBLISHED);
-        if (routes.isEmpty()) {
-            throw new IllegalArgumentException("今天沒有已發布的配送任務，不能登記出車里程");
-        }
-        if (routes.size() != 1) {
-            throw new IllegalStateException("同一位司機今天存在多條已發布路線，無法判斷出車車輛");
-        }
-        RoutesEntity route = routes.getFirst();
-        // 與撤回共用路線鎖，檢查必須屬於這次發布的人、車與版本。
-        preTripInspectionService.requirePassed(driverId, route.getId());
+        // 與撤回共用路線鎖，檢查必須屬於目前的人、車與版本。
+        RoutesEntity route = routesDAO.findForDriverOnDateForUpdate(today, driverId)
+                .orElseThrow(() -> new IllegalArgumentException("今天沒有配送任務，不能登記出車里程"));
+        preTripInspectionService.requirePassedForDeparture(driverId, route.getId());
         if (route.getVehicleId() == null) {
             throw new IllegalStateException("已發布路線尚未指派車輛");
         }
@@ -160,8 +153,12 @@ public class MileageLogsService {
             throw new IllegalArgumentException("收車里程不能小於出車里程");
         }
 
+        boolean withdrawn = mileage.getRouteId() != null && routesDAO.findById(mileage.getRouteId())
+                .map(route -> route.getStatus() == RouteStatus.DRAFT)
+                .orElse(false);
         List<String> unfinishedOrders = ordersDAO.findByRouteIdOrderBySequence(mileage.getRouteId())
                 .stream()
+                .filter(order -> !withdrawn || order.getStatus().isInDriverCustody())
                 // FAILED 也算結束：倉庫點交不符的單今天不出貨，已改由明日補送單處理
                 .filter(order -> order.getStatus() != OrderStatus.COMPLETED
                         && order.getStatus() != OrderStatus.NO_SIGNATURE

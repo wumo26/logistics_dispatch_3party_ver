@@ -305,7 +305,11 @@ public class RoutePlanMetricsService {
     }
 
     private void populateLiveEta(RouteMetricsResponse response, RoutesEntity route) {
-        if (route.getStatus() != com.example.backend.constants.RouteStatus.PUBLISHED) {
+        boolean published = route.getStatus() == com.example.backend.constants.RouteStatus.PUBLISHED;
+        List<OrdersEntity> remaining = ordersDAO.findByRouteIdOrderBySequence(route.getId()).stream()
+                .filter(order -> published ? order.getStatus().isActive() : order.getStatus().isInDriverCustody())
+                .toList();
+        if (!published && remaining.isEmpty()) {
             response.setLiveEtaStatus("ROUTE_NOT_PUBLISHED");
             return;
         }
@@ -330,9 +334,6 @@ public class RoutePlanMetricsService {
         WarehousesEntity warehouse = warehousesDAO.findById(route.getWarehouseId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "找不到路線倉庫，ID：" + route.getWarehouseId()));
-        List<OrdersEntity> remaining = ordersDAO.findByRouteIdOrderBySequence(route.getId()).stream()
-                .filter(order -> order.getStatus().isActive())
-                .toList();
         Map<Long, OrdersEntity> firstOrderByStore = new LinkedHashMap<>();
         for (OrdersEntity order : remaining) {
             firstOrderByStore.putIfAbsent(order.getStoreId(), order);

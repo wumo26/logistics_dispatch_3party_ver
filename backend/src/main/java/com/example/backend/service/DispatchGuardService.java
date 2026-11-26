@@ -39,27 +39,32 @@ public class DispatchGuardService {
         this.scheduleMonthsDAO = scheduleMonthsDAO;
     }
 
+    @Transactional
     public void assertCanReplan(LocalDate date, Long warehouseId) {
-        List<RoutesEntity> routes = routesDAO.findByDateAndWarehouseId(date, warehouseId);
+        List<RoutesEntity> routes = routesDAO.findByDateAndWarehouseIdForUpdate(date, warehouseId);
         if (routes.stream().anyMatch(route -> route.getStatus() == RouteStatus.PUBLISHED)) {
             throw new IllegalArgumentException("當天已有發布的路線，請先撤回再重排");
         }
         List<Long> routeIds = routes.stream().map(RoutesEntity::getId).toList();
         if (!routeIds.isEmpty()) {
             List<String> delivering = ordersDAO.findByRouteIdIn(routeIds).stream()
-                    .filter(order -> order.getStatus() == OrderStatus.IN_DELIVERY)
+                    .filter(order -> order.getStatus().isInDriverCustody())
                     .map(OrdersEntity::getOrderNumber)
                     .toList();
             if (!delivering.isEmpty()) {
                 throw new IllegalArgumentException(
-                        "已有配送中的訂單，不能一般重排；可直接重新發布或使用司機交接："
+                        "仍有已點交或配送中的貨物，請完成配送或交接後再重排："
                                 + String.join("、", delivering));
+            }
+            if (routesDAO.hasOpenMileage(routeIds)) {
+                throw new IllegalArgumentException("仍有車輛尚未回倉收車，請完成里程後再重排");
             }
         }
     }
 
+    @Transactional
     public void assertCanPublish(LocalDate date) {
-        List<RoutesEntity> routes = routesDAO.findByDate(date);
+        List<RoutesEntity> routes = routesDAO.findByDateForUpdate(date);
         if (routes.isEmpty()) {
             throw new IllegalArgumentException("當天沒有可發布的路線：" + date);
         }
@@ -145,38 +150,6 @@ public class DispatchGuardService {
 
         if (!problems.isEmpty()) {
             throw new IllegalArgumentException(date + " 發布前檢查失敗：" + String.join("；", problems));
-        }
-    }
-
-    /**
-     * 撤回只阻擋尚有貨物在車上的任務（已點交、配送中）。
-     *
-     * <p>撤回會把路線翻回草稿，司機端只看已發布的路線，送到一半的司機手上的任務會直接消失。
-     * 點交也算開始：貨已經在車上，撤回重排會讓車上的貨跟系統的路線對不起來。
-     * 已經出發後要換人，請走司機交接（EmergencyLeaveService）。</p>
-     * <p>已完成、未簽收與失敗是結案紀錄，不應阻止其餘待送訂單撤回。
-     * 撤回不修改訂單；重排也必須保留這些訂單原本的人車與配送紀錄。</p>
-     */
-    public void assertCanWithdraw(LocalDate date) {
-        List<Long> publishedRouteIds = new ArrayList<>();
-        for (RoutesEntity route : routesDAO.findByDate(date)) {
-            if (route.getStatus() == RouteStatus.PUBLISHED) {
-                publishedRouteIds.add(route.getId());
-            }
-        }
-        if (publishedRouteIds.isEmpty()) {
-            return;
-        }
-        List<String> started = new ArrayList<>();
-        for (OrdersEntity order : ordersDAO.findByRouteIdIn(publishedRouteIds)) {
-            if (order.getStatus() == OrderStatus.LOADED
-                    || order.getStatus() == OrderStatus.IN_DELIVERY) {
-                started.add(order.getOrderNumber());
-            }
-        }
-        if (!started.isEmpty()) {
-            throw new IllegalArgumentException("尚有已點交或配送中的貨物，不能直接撤回（" + String.join("、", started)
-                    + "）；請先完成貨物交接。已完成訂單不會阻擋撤回");
         }
     }
 

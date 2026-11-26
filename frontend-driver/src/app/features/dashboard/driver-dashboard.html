@@ -138,12 +138,14 @@
         </div>
 
         @if (hasNavigationDestination()) {
-          @if (navigationRouteState() === 'loading') {
+          @if (navigationRouteState() === 'waiting-location') {
+            <p class="navigation-route-detail">取得目前位置後會自動顯示導航路線。</p>
+          } @else if (navigationRouteState() === 'loading') {
             <p class="navigation-route-detail">正在規劃道路路線...</p>
           } @else if (navigationRouteState() === 'ready' && navigationRouteDetail(); as detail) {
             <p class="navigation-route-detail">{{ detail }}</p>
           } @else if (navigationRouteState() === 'error') {
-            <p class="navigation-route-detail is-error">道路路線暫時無法取得。</p>
+            <p class="navigation-route-detail is-error">{{ navigationRouteError() }}</p>
           }
         } @else {
           <p class="destination-copy">{{ destinationDetail() }}</p>
@@ -153,7 +155,7 @@
           type="button"
           [class]="isNavigating() ? 'danger-action' : 'primary-action'"
           (click)="isNavigating() ? stopNavigation() : startNavigation()"
-          [disabled]="!selectedTask()"
+          [disabled]="!isNavigating() && navigationRouteState() !== 'ready'"
         >
           {{ isNavigating() ? '結束導航' : '開始導航' }}
         </button>
@@ -371,6 +373,7 @@
                 </header>
                 <p class="task-route-meta">
                   {{ route.stopCount }} 個站點 · {{ route.totalBoxes }} 箱
+                  @if (route.status === 'DRAFT') { · 已撤回發布，請繼續處理已接貨的訂單 }
                 </p>
                 <app-pre-trip-check [route]="route" (passedChange)="setInspectionReady(route.routeId, $event)" />
                 <ol class="task-stop-list">
